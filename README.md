@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏘️ Awaas Hub: Secure Property Management System
 
-## Getting Started
+Awaas Hub is a modern web application built with **Next.js** and **Tailwind CSS**, designed to provide a secure and efficient platform for listing, managing, and viewing residential and commercial properties.
 
-First, run the development server:
+---
+
+## ✨ Features
+
+* **Floating Header:** Features a unique floating navigation bar with a subtle **gradient border**, providing a modern UI.
+* **Animated Entrance:** Uses **GSAP (GreenSock)** for a smooth slide-down animation on the header upon load.
+* **Property Listings:** Displays featured property cards for easy browsing.
+* **Responsive Design:** Optimized for seamless viewing across all devices (mobile, tablet, and desktop).
+* **Core Technologies:** Built on **Next.js 16**, **React**, and **TypeScript**.
+
+---
+
+## 🚀 Getting Started
+
+Follow these steps to set up and run the project locally.
+
+### Prerequisites
+
+You must have **Node.js** (v18+) installed.
+
+### Running the Development Server
+
+Start the application in development mode:
 
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
