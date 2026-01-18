@@ -1,5 +1,5 @@
-import { useSession } from "@/lib/auth-client"
-import { Session } from "@/lib/auth"
+import { useSession } from "@/lib/client/auth-client"
+import { Session } from "@/lib/server/auth"
 import { NavUser } from "./nav-user"
 
 
@@ -20,11 +20,11 @@ export default function DashboardNavbar() {
     const navUserData = user ? {
         name: user.name ?? "User",
         email: user.email ?? "",
-        avatar: user.image ?? ""
+        image: user.image ?? ""
     } : {
         name: "User",
         email: "",
-        avatar: ""
+        image: ""
     }
 
     return (

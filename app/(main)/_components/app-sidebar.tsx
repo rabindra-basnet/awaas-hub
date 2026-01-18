@@ -39,7 +39,7 @@ export default function AppSidebar({ session }: { session: any }) {
   return (
     <Sidebar collapsible="icon" className="border-r bg-sidebar">
       {/* Header */}
-      <SidebarHeader className={cn("border-b", isCollapsed && "border-none")}>
+      <SidebarHeader className={cn("border-b p-0", isCollapsed && "border-none")}>
         <div
           className={cn(
             "flex transition-all duration-200",

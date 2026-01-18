@@ -1,82 +1,58 @@
-import { getDatabase } from "@/lib/db"
-import { auth } from "@/lib/auth"
-import { type NextRequest, NextResponse } from "next/server"
-import { ObjectId } from "mongodb"
+// app/api/favorites/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "@/lib/server/getSession";
+import { Favorite } from "@/lib/models/Favorite";
+import { connectToDatabase } from "@/lib/server/db";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest,) {
   try {
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    })
+    const session = await getServerSession();
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    if (!session?.user)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const db = await getDatabase()
-    const favorites = await db.collection("favorites").find({ userId: session.user.id }).toArray()
+    await connectToDatabase();
+    const favorites = await Favorite.find({ userId: session.user.id }).lean();
+    console.log(favorites);
 
-    // Get property details
-    const propertyIds = favorites.map((f) => new ObjectId(f.propertyId))
-    const properties = await db
-      .collection("properties")
-      .find({ _id: { $in: propertyIds } })
-      .toArray()
-
-    return NextResponse.json(properties)
-  } catch (error) {
-    console.error("Error fetching favorites:", error)
-    return NextResponse.json({ error: "Failed to fetch favorites" }, { status: 500 })
+    return NextResponse.json(favorites);
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json(
+      { error: "Failed to fetch favorites" },
+      { status: 500 },
+    );
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    })
+    const session = await getServerSession();
+    if (!session?.user)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { propertyId } = await req.json();
+    if (!propertyId)
+      return NextResponse.json(
+        { error: "propertyId is required" },
+        { status: 400 },
+      );
 
-    const { propertyId } = await request.json()
-    const db = await getDatabase()
+    await connectToDatabase();
 
-    await db.collection("favorites").insertOne({
-      userId: session.user.id,
-      propertyId,
-      createdAt: new Date(),
-    })
+    // Upsert: only one favorite per user-property
+    const favorite = await Favorite.findOneAndUpdate(
+      { userId: session.user.id, propertyId },
+      { $setOnInsert: { userId: session.user.id, propertyId } },
+      { upsert: true, new: true },
+    );
 
-    return NextResponse.json({ success: true }, { status: 201 })
-  } catch (error) {
-    console.error("Error adding favorite:", error)
-    return NextResponse.json({ error: "Failed to add favorite" }, { status: 500 })
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    })
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { propertyId } = await request.json()
-    const db = await getDatabase()
-
-    await db.collection("favorites").deleteOne({
-      userId: session.user.id,
-      propertyId,
-    })
-
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error removing favorite:", error)
-    return NextResponse.json({ error: "Failed to remove favorite" }, { status: 500 })
+    return NextResponse.json(favorite);
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json(
+      { error: "Failed to add favorite" },
+      { status: 500 },
+    );
   }
 }

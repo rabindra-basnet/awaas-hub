@@ -1,30 +1,30 @@
 "use client";
 
-import type { FC } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, Search } from "lucide-react";
-import { useSession } from "@/lib/auth-client";
+import { useSession } from "@/lib/client/auth-client";
 import { ModeToggle } from "@/components/theme-toggle";
-import {
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
-} from "@/components/ui/avatar";
 
 interface DashboardHeaderProps {
     onSearch?: (query: string) => void;
 }
 
-const DashboardHeader: FC<DashboardHeaderProps> = ({ onSearch }) => {
-    const pathname = usePathname(); // e.g., "/dashboard/settings"
+const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
+    const pathname = usePathname();
     const { data: session } = useSession();
 
-    // Convert pathname to a title
+    const skipHeaderPaths = ["/properties/",];
+
+    // Check if current pathname starts with any of the skip paths
+    const skipHeader = skipHeaderPaths.some(path => pathname?.startsWith(path));
+
+    if (skipHeader) return null;
+
     const pageTitle =
         pathname
             ?.split("/")
             .filter(Boolean)
-            .pop() // get last segment
+            .pop()
             ?.replace(/[-_]/g, " ")
             .replace(/\b\w/g, (c) => c.toUpperCase()) || "Dashboard";
 
@@ -33,17 +33,11 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ onSearch }) => {
 
     // Get user initials fallback
     const userName = session?.user?.name || "";
-    const initials = userName
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase();
 
     return (
-        <header className="flex-none bg-background border-b">
-            <div className="px-6 py-4">
-                <div className="flex items-center justify-between">
-                    {/* Title */}
+        <header className="sticky top-0 z-20 bg-background border-b">
+            <div className="p-4">
+                <div className="flex items-center justify-between pl-10">
                     <div>
                         <h1 className="text-3xl font-bold">{pageTitle}</h1>
                         <p className="text-sm text-muted-foreground">
@@ -70,18 +64,10 @@ const DashboardHeader: FC<DashboardHeaderProps> = ({ onSearch }) => {
                         </button>
 
                         <ModeToggle />
-
-                        <Avatar>
-                            {session?.user?.image ? (
-                                <AvatarImage src={session.user.image} alt={userName} />
-                            ) : (
-                                <AvatarFallback>{initials || "U"}</AvatarFallback>
-                            )}
-                        </Avatar>
                     </div>
                 </div>
             </div>
-        </header>
+        </header >
     );
 };
 

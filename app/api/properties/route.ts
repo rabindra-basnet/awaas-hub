@@ -1,32 +1,42 @@
-import { getDatabase } from "@/lib/db"
-import { type NextRequest, NextResponse } from "next/server"
+// app/api/properties/route.ts
+import { NextResponse } from "next/server";
+import mongoose from "mongoose";
+import { Property } from "@/lib/models/Property";
+import { Role, Permission, hasPermission } from "@/lib/rbac";
+import { getServerSession } from "@/lib/server/getSession";
 
-export async function GET(request: NextRequest) {
+/**
+ * GET /api/properties
+ * - Admin, Seller, Buyer can view properties
+ * - Seller sees only their own, others see all
+ */
+export async function GET() {
   try {
-    const db = await getDatabase()
-    const properties = await db.collection("properties").find({ status: "available" }).toArray()
+    const session = await getServerSession();
+    if (!session?.user)
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-    return NextResponse.json(properties)
-  } catch (error) {
-    console.error("Error fetching properties:", error)
-    return NextResponse.json({ error: "Failed to fetch properties" }, { status: 500 })
-  }
-}
+    const role = session.user.role as Role;
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const db = await getDatabase()
+    // Anyone with view_properties can see
+    if (!hasPermission(role, Permission.VIEW_PROPERTIES)) {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
 
-    const result = await db.collection("properties").insertOne({
-      ...body,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
+    const userId = session.user.id;
+    const query =
+      role === Role.SELLER
+        ? { sellerId: new mongoose.Types.ObjectId(userId) }
+        : {}; // Admin / Buyer see all
 
-    return NextResponse.json({ id: result.insertedId, ...body }, { status: 201 })
-  } catch (error) {
-    console.error("Error creating property:", error)
-    return NextResponse.json({ error: "Failed to create property" }, { status: 500 })
+    const properties = await Property.find(query).sort({ createdAt: -1 });
+
+    return NextResponse.json(properties);
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json(
+      { message: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

@@ -30,20 +30,6 @@ export const DASHBOARD_PAGES: DashboardPage[] = [
     permission: Permission.VIEW_PROFILE,
     icons: LayoutDashboard,
   },
-  // {
-  //   title: "Profile",
-  //   description: "View and update your personal information",
-  //   href: "/users/profile",
-  //   permission: Permission.VIEW_PROFILE,
-  //   icons: User,
-  // },
-  {
-    title: "Settings",
-    description: "Account preferences and security",
-    href: "/users/settings",
-    permission: Permission.MANAGE_SETTINGS,
-    icons: Settings,
-  },
   {
     title: "Properties",
     description: "Browse available properties",
@@ -73,11 +59,11 @@ export const DASHBOARD_PAGES: DashboardPage[] = [
     icons: CalendarCheck,
   },
   {
-    title: "Users",
-    description: "Manage platform users",
-    href: "/users",
-    permission: Permission.MANAGE_USERS,
-    icons: Users,
+    title: "Settings",
+    description: "Account preferences and security",
+    href: "/settings",
+    permission: Permission.MANAGE_SETTINGS,
+    icons: Settings,
   },
   {
     title: "Analytics",

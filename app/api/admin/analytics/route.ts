@@ -1,5 +1,5 @@
-import { getDatabase } from "@/lib/db"
-import { auth } from "@/lib/auth"
+import { getDatabase } from "@/lib/server/db"
+import { auth } from "@/lib/server/auth"
 import { type NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {

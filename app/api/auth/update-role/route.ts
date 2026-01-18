@@ -1,10 +1,16 @@
-// app/api/update-role/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
-import { getDatabase } from "@/lib/db";
+import mongoose from "mongoose";
+import { connectToDatabase } from "@/lib/server/db";
+import { Role } from "@/lib/rbac";
 
+/**
+ * POST /api/update-role
+ * Updates a user's role (admin cannot be updated)
+ */
 export async function POST(req: NextRequest) {
     try {
+        const { db } = await connectToDatabase();
+
         const body = await req.json();
         const { role, userId } = body;
 
@@ -16,60 +22,46 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // 2️⃣ Validate ObjectId
-        if (!ObjectId.isValid(userId)) {
+        // 2️⃣ Validate role enum
+        if (!Object.values(Role).includes(role as Role)) {
+            return NextResponse.json({ message: "Invalid role value" }, { status: 400 });
+        }
+
+        // 3️⃣ Validate ObjectId
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
             return NextResponse.json({ message: "Invalid userId" }, { status: 400 });
         }
 
-        // 3️⃣ Get the database
-        const db = await getDatabase(); // uses cached connection if available
-        const usersCollection = db.collection("user");
+        const objectId = new mongoose.Types.ObjectId(userId);
 
-        // 🔹 Debug: print basic info
-        console.log("🟢 POST /api/update-role hit");
-        console.log("userId from request:", userId);
-        console.log("db database name:", db.databaseName);
-
-        // 🔹 Debug: print first 3 users (helps confirm collection)
-        const sampleUsers = await usersCollection.find({}).limit(3).toArray();
-        console.log("Sample users in DB:", sampleUsers);
-
-        // 4️⃣ Find the user by _id
-        const objectId = new ObjectId(userId);
-        const user = await usersCollection.findOne({ _id: objectId });
+        // 4️⃣ Find user using native MongoDB
+        const user = await db.collection("users").findOne({ _id: objectId });
 
         if (!user) {
-            // If user not found, try searching by string id
-            const userStringId = await usersCollection.findOne({ _id: objectId });
-            if (userStringId) {
-                console.warn("⚠️ User found with string id, not ObjectId!");
-                return NextResponse.json(
-                    { message: "User id stored as string in DB. Use string _id." },
-                    { status: 400 }
-                );
-            }
-
-            console.warn("⚠️ User not found for ObjectId:", objectId);
             return NextResponse.json({ message: "User not found" }, { status: 404 });
         }
 
-        console.log("Found user:", user);
+        // 5️⃣ Prevent updating admin role
+        // if (user.role === Role.ADMIN) {
+        //     return NextResponse.json({ message: "Cannot update admin role" }, { status: 403 });
+        // }
 
-        // 5️⃣ Check if role already matches
+        // 6️⃣ Check if role already matches
         if (user.role === role.trim()) {
-            console.log("Role already set:", role);
-            return NextResponse.json({ message: "Role already set" }, { status: 200 });
+            return NextResponse.json({ message: "Role already set", role: user.role }, { status: 200 });
         }
 
-        // 6️⃣ Update role
-        const updateResult = await usersCollection.updateOne(
+        // 7️⃣ Update role
+        const result = await db.collection("users").updateOne(
             { _id: objectId },
             { $set: { role: role.trim() } }
         );
 
-        console.log("Update result:", updateResult);
+        if (result.modifiedCount === 0) {
+            return NextResponse.json({ message: "Failed to update role" }, { status: 500 });
+        }
 
-        return NextResponse.json({ message: "Role updated successfully", role: user.role }, { status: 200 });
+        return NextResponse.json({ message: "Role updated successfully", role }, { status: 200 });
     } catch (err: any) {
         console.error("❌ Failed to update role:", err);
         return NextResponse.json({ message: "Internal server error" }, { status: 500 });

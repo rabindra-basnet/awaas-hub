@@ -29,7 +29,7 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from "@/components/ui/sidebar"
-import { authClient } from "@/lib/auth-client"
+import { authClient } from "@/lib/client/auth-client"
 import { useRouter } from "next/navigation"
 
 export function NavUser({
@@ -38,7 +38,7 @@ export function NavUser({
     user: {
         name: string
         email: string
-        avatar: string
+        image: string
     }
 }) {
     const { isMobile } = useSidebar()
@@ -48,24 +48,34 @@ export function NavUser({
         await authClient.signOut({
             fetchOptions: {
                 onSuccess: () => {
-                    router.push("/login")
+                    router.push("/")
                 }
             }
         })
     }
+    // Get user initials fallback
+    const userName = user?.name || "";
+    const initials = userName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase();
 
     return (
         <SidebarMenu>
             <SidebarMenuItem>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <SidebarMenuButton 
+                        <SidebarMenuButton
                             size="lg"
                             className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                         >
-                            <Avatar className="h-8 w-8 rounded-lg">
-                                <AvatarImage src={user.avatar} alt={user.name} />
-                                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                            <Avatar>
+                                {user?.image ? (
+                                    <AvatarImage src={user.image} alt={userName} />
+                                ) : (
+                                    <AvatarFallback>{initials || "U"}</AvatarFallback>
+                                )}
                             </Avatar>
                             <div className="grid flex-1 text-left text-sm leading-tight">
                                 <span className="truncate font-medium">{user.name}</span>
@@ -82,9 +92,12 @@ export function NavUser({
                     >
                         <DropdownMenuLabel className="p-0 font-normal">
                             <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                                <Avatar className="h-8 w-8 rounded-lg">
-                                    <AvatarImage src={user.avatar} alt={user.name} />
-                                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                                <Avatar>
+                                    {user?.image ? (
+                                        <AvatarImage src={user.image} alt={userName} />
+                                    ) : (
+                                        <AvatarFallback>{initials || "U"}</AvatarFallback>
+                                    )}
                                 </Avatar>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
                                     <span className="truncate font-medium">{user.name}</span>
@@ -93,7 +106,7 @@ export function NavUser({
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
+                        {/* <DropdownMenuGroup>
                             <DropdownMenuItem>
                                 <Sparkles />
                                 Upgrade to Pro
@@ -113,8 +126,8 @@ export function NavUser({
                                 <Bell />
                                 Notifications
                             </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
+                        </DropdownMenuGroup> */}
+                        {/* <DropdownMenuSeparator /> */}
                         <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                             <LogOut />
                             Log out

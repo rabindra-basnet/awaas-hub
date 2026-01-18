@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { getSession } from "@/lib/auth-client"; // your session helper
-
 import {
     Select,
     SelectContent,
@@ -14,28 +14,30 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+
+import { useSession } from "@/lib/client/auth-client";
 import { useUpdateRole } from "@/hooks/services/useUpdateRole";
 
-export default function UpdateProfile() {
+export default function AuthGateWithRoleSetup() {
     const router = useRouter();
-    const [role, setRole] = useState<string>("");
-    const [userId, setUserId] = useState<string | null>(null);
+    const { data: session, isPending } = useSession();
     const mutation = useUpdateRole();
 
-    // Fetch session on mount
+    const [role, setRole] = useState("");
+
+    // Redirect logic
     useEffect(() => {
-        async function fetchSession() {
-            const { data: session } = await getSession();
-            console.log(session)
-            if (!session?.user?.id) {
-                toast.error("User not logged in");
-                router.push("/login");
-                return;
-            }
-            setUserId(session.user.id);
+        if (isPending) return;
+
+        if (!session) {
+            router.replace("/login");
+            return;
         }
-        fetchSession();
-    }, [router]);
+
+        if (session.user?.role) {
+            router.replace("/dashboard");
+        }
+    }, [session, isPending, router]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -45,17 +47,17 @@ export default function UpdateProfile() {
             return;
         }
 
-        if (!userId) {
+        if (!session?.user?.id) {
             toast.error("User not found");
             return;
         }
 
         mutation.mutate(
-            { userId, role },
+            { userId: session.user.id, role },
             {
                 onSuccess: () => {
                     toast.success("Role updated successfully!");
-                    router.push("/dashboard");
+                    router.replace("/dashboard");
                 },
                 onError: (err: any) => {
                     toast.error(err.message || "Failed to update role");
@@ -64,19 +66,37 @@ export default function UpdateProfile() {
         );
     };
 
+    // Loading state (session check or mutation)
+    if (isPending || mutation.isPending) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                    Finishing sign in…
+                </p>
+            </div>
+        );
+    }
+
+    // If user has role, they will be redirected (avoid flash)
+    if (session?.user?.role) return null;
+
+    // Role selection UI
     return (
         <div className="min-h-screen flex items-center justify-center px-4">
             <form
                 onSubmit={handleSubmit}
                 className="w-full max-w-md space-y-6 rounded-xl border bg-card p-6 shadow-md"
             >
-                <h2 className="text-2xl font-bold text-center">Select Your Role</h2>
+                <h2 className="text-2xl font-bold text-center">
+                    Select Your Role
+                </h2>
                 <p className="text-center text-muted-foreground">
                     Choose your account type
                 </p>
 
                 <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
+                    <Label>Role</Label>
                     <Select value={role} onValueChange={setRole}>
                         <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select your role" />
@@ -88,8 +108,8 @@ export default function UpdateProfile() {
                     </Select>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={mutation.isPending || !userId}>
-                    {mutation.isPending ? "Submitting..." : "Submit"}
+                <Button type="submit" className="w-full">
+                    Submit
                 </Button>
             </form>
         </div>
