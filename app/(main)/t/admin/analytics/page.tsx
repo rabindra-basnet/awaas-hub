@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "@/lib/auth-client"
+
 import Link from "next/link"
+import { useSession } from "@/lib/client/auth-client"
 
 interface Analytics {
   totalUsers: number
