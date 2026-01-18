@@ -1,7 +1,7 @@
 import type React from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
-// import { Analytics } from "@vercel/analytics/next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import Providers from "./providers";
 
@@ -42,7 +42,7 @@ export default function RootLayout({
       <body className={`font-sans antialiased`} >
         <Providers>
           {children}
-          {/* <Analytics /> */}
+          <Analytics />
         </Providers>
       </body>
     </html>

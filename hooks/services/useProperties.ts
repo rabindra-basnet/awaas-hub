@@ -74,6 +74,41 @@ export function useProperty(id: string) {
     });
 }
 
+export function useUpdateProperty() {
+
+    return useMutation({
+        mutationFn: async ({ id, ...data }: { id: string } & PropertyForm) => {
+            const res = await fetch(`/api/properties/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+            if (!res.ok) throw new Error("Failed to update property");
+            return res.json();
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ["properties"] });
+            queryClient.invalidateQueries({ queryKey: ["property", variables.id] });
+        },
+    });
+}
+
+export function useDeleteProperty() {
+
+    return useMutation({
+        mutationFn: async (id: string) => {
+            const res = await fetch(`/api/properties/${id}`, {
+                method: "DELETE",
+            });
+            if (!res.ok) throw new Error("Failed to delete property");
+            return res.json();
+        },
+        onSuccess: (_, id) => {
+            queryClient.invalidateQueries({ queryKey: ["properties"] });
+            queryClient.removeQueries({ queryKey: ["property", id] });
+        },
+    });
+}
 
 // Create new property
 export function useCreateProperty() {

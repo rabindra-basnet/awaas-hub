@@ -5,6 +5,8 @@ export interface IProperty {
     price: number;
     location: string;
     status: "available" | "pending" | "sold";
+    description: string,
+    isFavorite: boolean,
     sellerId: Types.ObjectId; // MongoDB ObjectId from Better Auth user
     createdAt: Date;
     images: string[];
@@ -19,7 +21,9 @@ const PropertySchema = new Schema<IProperty>({
         enum: ["available", "pending", "sold"],
         default: "available",
     },
-    sellerId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    isFavorite: { type: Boolean },
+    description: { type: String },
+    sellerId: { type: Schema.Types.ObjectId, ref: "users", required: true, index: true },
     images: { type: [String], default: [] },
     createdAt: { type: Date, default: Date.now },
 });

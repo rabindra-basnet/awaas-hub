@@ -36,7 +36,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <SidebarProvider defaultOpen>
+    <SidebarProvider defaultOpen={false}>
       <div className="flex h-screen w-full">
         {/* Sidebar */}
         <AppSidebar session={session} />

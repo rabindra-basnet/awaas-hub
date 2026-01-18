@@ -11,6 +11,11 @@ export enum Permission {
     VIEW_PROPERTIES = "view_properties",
     MANAGE_PROPERTIES = "manage_properties",
     VIEW_FAVORITES = "view_favorites",
+    CREATE_PROPERTIES = "create_properties",      // new
+    EDIT_PROPERTIES = "edit_properties",          // new
+    DELETE_PROPERTIES = "delete_properties",      // new
+
+
     MANAGE_APPOINTMENTS = "manage_appointments",
     MANAGE_USERS = "manage_users",
     VIEW_ANALYTICS = "view_analytics",
@@ -27,7 +32,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 
     [Role.SELLER]: [
         Permission.VIEW_PROPERTIES,
+        // Permission.CREATE_PROPERTIES,
+        // Permission.EDIT_PROPERTIES,
+        // Permission.DELETE_PROPERTIES,
         Permission.MANAGE_PROPERTIES,
+
         Permission.MANAGE_APPOINTMENTS,
         Permission.VIEW_PROFILE,
         Permission.MANAGE_SETTINGS,
