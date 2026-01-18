@@ -4,12 +4,12 @@ import { Types } from "mongoose";
 import { connectToDatabase } from "@/lib/server/db";
 import { Favorite } from "@/lib/models/Favorite";
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const session = await getServerSession();
         if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const { id } = params;
+        const { id } = await params;
         if (!id || !Types.ObjectId.isValid(id)) {
             return NextResponse.json({ error: "Invalid favorite id" }, { status: 400 });
         }

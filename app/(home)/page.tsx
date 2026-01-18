@@ -1,11 +1,11 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { Shield, CheckCircle, Home } from 'lucide-react'
-import Header from './__components/header'
 import HeroSection from './__components/hero-section'
 import FeaturesSection from './__components/features-section'
 import FeaturedProperties from './__components/featured-properties'
 import CallToAction from './__components/call-to-action'
+import Header from '@/components/header'
 import Footer from './__components/footer'
 
 

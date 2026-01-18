@@ -6,15 +6,15 @@ const Footer: React.FC = () => {
     const quickLinks = [
         { name: 'About Us', href: '/about' },
         { name: 'Properties', href: '/properties' },
-        { name: 'Agents', href: '/agents' },
+        // { name: 'Agents', href: '/agents' },
         { name: 'Blog', href: '/blog' }
     ]
 
     const supportLinks = [
-        { name: 'Help Center', href: '/help' },
+        // { name: 'Help Center', href: '/help' },
         { name: 'Contact Us', href: '/contact' },
-        { name: 'Terms of Service', href: '/terms' },
-        { name: 'Privacy Policy', href: '/privacy' }
+        { name: 'Terms of Service', href: '/terms-and-conditions' },
+        { name: 'Privacy Policy', href: '/privacy-policy' }
     ]
 
     return (
