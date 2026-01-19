@@ -21,6 +21,6 @@ export function useDashboardData() {
     },
     refetchInterval: 15_000,
     refetchOnWindowFocus: true,
-    // staleTime: 5_000,
+    staleTime: 5_000,
   });
 }

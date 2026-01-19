@@ -40,7 +40,11 @@ export default function RecentPropertiesCard({
 
       <CardContent className="space-y-4">
         {properties.map((property) => (
-          <Link key={property._id} href={`/properties/${property._id}`}>
+          <Link
+            key={property._id}
+            href={`/properties/${property._id}`}
+            className="block"
+          >
             <div className="flex items-center gap-4 rounded-lg border p-3 hover:bg-accent/40 transition">
               <img
                 src={property.image}
