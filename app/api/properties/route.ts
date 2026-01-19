@@ -16,7 +16,7 @@ export async function GET() {
     const session = await getServerSession();
     if (!session?.user) return unauthorized();
 
-    const role = session.user.role as Role;
+    const role = (session.user.role as Role) ?? Role.GUEST;
 
     // Anyone with view_properties can see
     if (!hasPermission(role, Permission.VIEW_PROPERTIES)) return forbidden();

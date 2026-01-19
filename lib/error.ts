@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export function unauthorized() {
-  return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  return NextResponse.json({ message: "Unauthorized, Please login" }, { status: 401 });
 }
 export function forbidden(msg: string = "Forbidden") {
   return NextResponse.json({ message: msg }, { status: 403 });

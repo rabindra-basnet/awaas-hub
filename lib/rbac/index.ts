@@ -14,7 +14,7 @@ export enum Permission {
   // DELETE_PROPERTIES = "delete_properties",      // new
 
   MANAGE_APPOINTMENTS = "manage_appointments",
-//   VIEW_APPOINTMENTS = "view_appointments",
+  //   VIEW_APPOINTMENTS = "view_appointments",
   MANAGE_USERS = "manage_users",
   VIEW_ANALYTICS = "view_analytics",
 
@@ -64,7 +64,7 @@ export function hasPermission(role: Role, permission: Permission): boolean {
  */
 export function hasAllPermissions(
   role: Role,
-  permissions: Permission[]
+  permissions: Permission[],
 ): boolean {
   return permissions.every((p) => hasPermission(role, p));
 }
@@ -74,7 +74,7 @@ export function hasAllPermissions(
  */
 export function hasAnyPermission(
   role: Role,
-  permissions: Permission[]
+  permissions: Permission[],
 ): boolean {
   return permissions.some((p) => hasPermission(role, p));
 }

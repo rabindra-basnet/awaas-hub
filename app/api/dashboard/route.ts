@@ -6,10 +6,10 @@ import { Property } from "@/lib/models/Property";
 import { Appointment } from "@/lib/models/Appointment";
 import { unauthorized } from "@/lib/error";
 
+// export async function GET() {
+//   return NextResponse.json(dashboardData);
+// }
 export async function GET() {
-  return NextResponse.json(dashboardData);
-}
-export async function ADD() {
   const session = await getServerSession();
   if (!session) return unauthorized();
 
@@ -46,8 +46,30 @@ export async function ADD() {
 
   return NextResponse.json({
     stats: [
-      { label: "Total Properties", value: totalProperties },
-      { label: "Active Listings", value: activeListings },
+      {
+        label: "Total Properties",
+        value: totalProperties,
+        icon: "Building2",
+        change: "+15.5%",
+      },
+      {
+        label: "Active Listings",
+        value: activeListings,
+        icon: "Home",
+        change: "-10.2%",
+      },
+      {
+        label: "Total Clients",
+        value: "3,429",
+        change: "+23.1%",
+        icon: "Users",
+      },
+      {
+        label: "Revenue (MTD)",
+        value: "$284.5K",
+        change: "+15.3%",
+        icon: "DollarSign",
+      },
     ],
     recentProperties,
     todaysSchedule: todaysAppointments,
