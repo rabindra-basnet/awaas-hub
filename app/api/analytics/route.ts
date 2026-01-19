@@ -1,45 +1,62 @@
-import { connectToDatabase } from "@/lib/server/db";
-import { auth } from "@/lib/server/auth";
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { getServerSession } from "@/lib/server/getSession";
+import { Role } from "@/lib/rbac";
+import { Property } from "@/lib/models/Property";
+import { Appointment } from "@/lib/models/Appointment";
+import { Favorite } from "@/lib/models/Favorite";
+import { unauthorized, forbidden, internalServerError } from "@/lib/error";
+import { getDb } from "@/lib/server/db";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
+    // 1️⃣ Get session
+    const session = await getServerSession();
+    if (!session) return unauthorized();
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // 2️⃣ Only allow admin
+    if (session.user.role !== Role.ADMIN) return forbidden();
 
-    // Check if user is admin
-    const { db } = await connectToDatabase();
-    const user = await db.collection("users").findOne({ id: session.user.id });
+    const db = await getDb();
 
-    if (user?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const totalUsers = await db.collection("user").countDocuments();
-    const totalProperties = await db.collection("properties").countDocuments();
-    const availableProperties = await db
-      .collection("properties")
-      .countDocuments({ status: "available" });
-    const totalAppointments = await db
-      .collection("appointments")
-      .countDocuments();
-
-    return NextResponse.json({
+    // 3️⃣ Fetch stats in parallel
+    const [
       totalUsers,
       totalProperties,
       availableProperties,
       totalAppointments,
+      totalFavorites,
+    ] = await Promise.all([
+      db.collection("users").countDocuments(),
+      Property.countDocuments(),
+      Property.countDocuments({ status: "available" }),
+      Appointment.countDocuments(),
+      Favorite.countDocuments(),
+    ]);
+
+    // 4️⃣ Optional: fetch breakdown for charts
+    const appointmentsByStatus = await Appointment.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]);
+
+    const propertiesByStatus = await Property.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]);
+
+    return NextResponse.json({
+      stats: {
+        totalUsers,
+        totalProperties,
+        availableProperties,
+        totalAppointments,
+        totalFavorites,
+      },
+      charts: {
+        appointmentsByStatus, // e.g., [{_id: "scheduled", count: 12}, ...]
+        propertiesByStatus, // e.g., [{_id: "available", count: 8}, ...]
+      },
     });
   } catch (error) {
     console.error("Error fetching analytics:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch analytics" },
-      { status: 500 }
-    );
+    return internalServerError("Failed to fetch analytics");
   }
 }

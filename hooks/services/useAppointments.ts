@@ -3,39 +3,42 @@ import { queryClient } from "@/lib/client/query-client";
 import { Appointment, AppointmentForm, AppointmentStatus } from "@/types";
 import { toast } from "sonner";
 
-/* =========================
-   READ (ALL)
-========================= */
-export function useAppointments() {
-  return useQuery({
-    queryKey: ["appointments"],
-    queryFn: async () => {
-      const res = await fetch("/api/appointments");
-      if (!res.ok) throw new Error("Failed to fetch appointments");
-      return res.json();
-    },
+// /* =========================
+//    READ (ALL)
+// ========================= */
+// export function useAppointments() {
+//   return useQuery({
+//     queryKey: ["appointments"],
+//     queryFn: async () => {
+//       const res = await fetch("/api/appointments");
+//       if (!res.ok) throw new Error("Failed to fetch appointments");
+//       return res.json();
+//     },
 
-    onError: (err: any) =>
-      toast.error(err?.message || "Failed to fetch appointments"),
-  });
-}
+//     onError: (err: any) =>
+//       toast.error(err?.message || "Failed to fetch appointments"),
+//   });
+// }
 
 /* =========================
    READ (SINGLE)
 ========================= */
+
 export function useAppointment(id: string) {
-  return useQuery({
+  return useQuery<any, Error>({
     queryKey: ["appointment", id],
     queryFn: async () => {
       const res = await fetch(`/api/appointments/${id}`);
       if (!res.ok) throw new Error("Failed to fetch appointment");
       return res.json();
     },
-    // enabled: !!id,
+    enabled: !!id,
     onError: (err: any) => {
-      toast.error(err?.message || "Failed to fetch appointment");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to fetch appointment",
+      );
     },
-  });
+  } as any);
 }
 
 /* =========================
@@ -44,7 +47,7 @@ export function useAppointment(id: string) {
 export function useCreateAppointment() {
   return useMutation({
     mutationFn: async (data: AppointmentForm) => {
-      const res = await fetch("/api/appointments", {
+      const res = await fetch("/api/appointments/new", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

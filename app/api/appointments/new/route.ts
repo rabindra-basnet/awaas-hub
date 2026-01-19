@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   if (!property) return notFound("Property not found");
 
   // Participants: buyer is logged-in user, seller from property
-  const participants = [session.user.id, property.createdBy];
+  const participants = [session.user.id, property.sellerId].filter(Boolean);
 
   const appointment = await Appointment.create({
     ...body,

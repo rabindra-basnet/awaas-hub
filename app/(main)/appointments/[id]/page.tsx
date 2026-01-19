@@ -101,7 +101,7 @@ export default function AppointmentDetailPage() {
 
   const handleDelete = () => {
     del.mutate(id, {
-      onSuccess: () => router.push("/appointments"),
+      onSuccess: () => router.push("/dashboard"),
       onError: (err: any) =>
         toast.error(err?.message || "Failed to delete appointment"),
     });

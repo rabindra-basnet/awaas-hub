@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { nextCookies } from "better-auth/next-js";
 import { connectToDatabase } from "./db";
+import { admin } from "better-auth/plugins";
 
 import { lastLoginMethod, openAPI } from "better-auth/plugins";
 
@@ -15,6 +16,8 @@ if (!process.env.MONGODB_URI) {
 
 // Connect to DB once at startup (Next.js module scope is reused in production)
 const { db, client } = await connectToDatabase();
+
+const adminids = { adminUserIds: ["6968f2f22fff902bf245f308"] };
 
 export const auth = betterAuth({
   database: mongodbAdapter(db, { client, debugLogs: false, usePlural: true }),
@@ -34,7 +37,7 @@ export const auth = betterAuth({
     },
   },
 
-  plugins: [nextCookies(), lastLoginMethod()],
+  plugins: [nextCookies(), lastLoginMethod(), admin()],
 
   user: {
     additionalFields: {

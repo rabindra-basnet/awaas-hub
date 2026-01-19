@@ -10,7 +10,7 @@ import { Appointment } from "@/lib/models/Appointment";
 ========================= */
 export async function GET(
   _: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession();
   if (!session) {
@@ -30,9 +30,9 @@ export async function GET(
 
   // Only participants or admin can view
   const userId = session?.user.id.toString();
-  const isParticipant = appointment.participants.some(
-    (id: any) => id.toString() === userId
-  );
+  const isParticipant = appointment.participants
+    .filter(Boolean)
+    .some((_id: any) => _id.toString() === userId);
 
   if (!isParticipant && session.user.role !== Role.ADMIN) {
     return forbidden();
@@ -46,7 +46,7 @@ export async function GET(
 ========================= */
 export async function PUT(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession();
   if (!session) {
@@ -83,7 +83,7 @@ export async function PUT(
 ========================= */
 export async function PATCH(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession();
   if (!session) return unauthorized();
@@ -112,14 +112,14 @@ export async function PATCH(
     return forbidden("Buyer cannot mark appointment as completed");
   }
 
-  const isParticipant = appointment.participants.some(
-    (id: any) => id.toString() === userId
-  );
+  const isParticipant = appointment.participants
+    .filter(Boolean)
+    .some((id: any) => id.toString() === userId);
 
   if (!isParticipant && session.user.role !== Role.ADMIN) {
     return forbidden();
   }
-
+  appointment.participants = appointment.participants.filter(Boolean);
   appointment.status = status;
   appointment.notes = notes;
   await appointment.save();
@@ -127,15 +127,13 @@ export async function PATCH(
   return NextResponse.json(appointment);
 }
 
-/* =========================
-   DELETE
-========================= */
+
 /* =========================
    DELETE
 ========================= */
 export async function DELETE(
   _: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession();
   if (!session) return unauthorized();

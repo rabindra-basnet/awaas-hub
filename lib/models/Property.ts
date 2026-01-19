@@ -12,6 +12,9 @@ export interface IProperty {
   images: string[];
   views: number;
   messagesCount: number;
+  bedrooms: number;
+  bathrooms: number;
+  area: number;
 }
 
 const PropertySchema = new Schema<IProperty>({
@@ -52,6 +55,9 @@ const PropertySchema = new Schema<IProperty>({
   },
 
   createdAt: { type: Date, default: Date.now },
+  bedrooms: { type: Number, default: 0, min: 0, max: 20 },
+  bathrooms: { type: Number, default: 0, min: 0, max: 20 },
+  area: { type: Number, default: 0, min: 0 },
 });
 
 // Indexes for dashboard and queries

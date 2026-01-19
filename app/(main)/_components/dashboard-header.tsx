@@ -13,7 +13,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
   const pathname = usePathname();
   const { data: session } = useSession();
 
-  const skipHeaderPaths = ["/properties/", "/appointments/"];
+  const skipHeaderPaths = ["/properties/", "/appointments/",];
 
   // Check if current pathname starts with any of the skip paths
   const skipHeader = skipHeaderPaths.some((path) => pathname?.startsWith(path));
