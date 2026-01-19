@@ -5,19 +5,21 @@ export interface IProperty {
   price: number;
   location: string;
   status: "available" | "pending" | "sold";
-  description: string;
+  description?: string;
   isFavorite: boolean;
-  sellerId: Types.ObjectId; // MongoDB ObjectId from Better Auth user
+  sellerId: Types.ObjectId; // MongoDB ObjectId from user
   createdAt: Date;
   images: string[];
-  views: Number;
-  messagesCount: Number;
+  views: number;
+  messagesCount: number;
 }
 
 const PropertySchema = new Schema<IProperty>({
-  title: { type: String, required: true },
-  price: { type: Number, required: true },
-  location: { type: String, required: true },
+  title: { type: String, required: true, trim: true, maxlength: 200 },
+
+  price: { type: Number, required: true, min: 0 },
+
+  location: { type: String, required: true, trim: true, maxlength: 100 },
 
   status: {
     type: String,
@@ -25,7 +27,8 @@ const PropertySchema = new Schema<IProperty>({
     default: "available",
   },
 
-  description: { type: String },
+  description: { type: String, trim: true, maxlength: 1000, default: "" },
+
   isFavorite: { type: Boolean, default: false },
 
   sellerId: {
@@ -35,15 +38,23 @@ const PropertySchema = new Schema<IProperty>({
     index: true,
   },
 
-  // 🔥 Dashboard fields
-  views: { type: Number, default: 0 },
-  messagesCount: { type: Number, default: 0 },
+  // 🔥 Dashboard / analytics fields
+  views: { type: Number, default: 0, min: 0 },
+  messagesCount: { type: Number, default: 0, min: 0 },
 
-  images: { type: [String], default: [] },
+  images: {
+    type: [String],
+    default: [],
+    validate: {
+      validator: (arr: string[]) => arr.length <= 10, // limit max 10 images
+      message: "You can upload up to 10 images only",
+    },
+  },
+
   createdAt: { type: Date, default: Date.now },
 });
 
-// Useful dashboard indexes
+// Indexes for dashboard and queries
 PropertySchema.index({ sellerId: 1, status: 1 });
 PropertySchema.index({ sellerId: 1, createdAt: -1 });
 
