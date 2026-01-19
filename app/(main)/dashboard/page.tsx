@@ -29,12 +29,14 @@ export default function DashboardPage() {
   }));
 
   return (
-    <div className="bg-background px-6 py-6 space-y-8">
-      <StatsGrid stats={stats} />
+    <div className="flex-1 overflow-y-auto">
+      <div className="bg-background px-6 py-6 space-y-8">
+        <StatsGrid stats={stats} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <RecentPropertiesCard properties={dashboard!.recentProperties} />
-        <TodayScheduleCard />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <RecentPropertiesCard properties={dashboard!.recentProperties} />
+          <TodayScheduleCard />
+        </div>
       </div>
     </div>
   );

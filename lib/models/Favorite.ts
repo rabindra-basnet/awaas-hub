@@ -17,7 +17,6 @@ const FavoriteSchema = new Schema<IFavorite>(
     }
 );
 
-// Optional: prevent duplicate favorite for same user-property
 FavoriteSchema.index({ userId: 1, propertyId: 1 }, { unique: true });
 
 export const Favorite = models.Favorite || model<IFavorite>("Favorite", FavoriteSchema);

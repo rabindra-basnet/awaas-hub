@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "@/lib/client/auth-client";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import AppSidebar from "./_components/app-sidebar";
@@ -9,6 +9,7 @@ import DashboardHeader from "./_components/dashboard-header";
 
 import { Role, Permission, hasPermission } from "@/lib/rbac";
 import AccessDeniedPage from "@/components/access-denied";
+import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
   children,
@@ -17,20 +18,20 @@ export default function DashboardLayout({
 }) {
   const { data: session, isPending } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
-  // 1️⃣ Not logged in → login
+  const isPropertiesPage = pathname.startsWith("/properties");
+
   useEffect(() => {
     if (!isPending && !session) {
       router.replace("/login");
     }
   }, [session, isPending, router]);
 
-  if (isPending) return null;
-  if (!session) return null;
+  if (isPending || !session) return null;
 
   const role = session.user.role as Role;
 
-  // 2️⃣ Logged in but no dashboard permission
   if (!hasPermission(role, Permission.VIEW_DASHBOARD)) {
     return <AccessDeniedPage />;
   }
@@ -38,16 +39,16 @@ export default function DashboardLayout({
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="flex h-screen w-full">
-        {/* Sidebar */}
         <AppSidebar session={session} />
 
-        {/* Main */}
         <main className="flex-1 flex flex-col">
-          {/* Sticky Header */}
           <DashboardHeader />
-
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto">
+          <div
+            className={cn(
+              "flex-1",
+              isPropertiesPage ? "overflow-hidden" : "overflow-y-auto"
+            )}
+          >
             {children}
           </div>
         </main>

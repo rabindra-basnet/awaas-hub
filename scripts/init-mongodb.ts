@@ -12,21 +12,21 @@ async function initializeDatabase() {
     const collections = await db.listCollections().toArray()
     const collectionNames = collections.map((c) => c.name)
 
-    if (!collectionNames.includes("user")) {
-      await db.createCollection("user")
-      await db.collection("user").createIndex({ email: 1 }, { unique: true })
+    if (!collectionNames.includes("users")) {
+      await db.createCollection("users")
+      await db.collection("users").createIndex({ email: 1 }, { unique: true })
       console.log("✓ Created user collection")
     }
 
-    if (!collectionNames.includes("session")) {
-      await db.createCollection("session")
-      await db.collection("session").createIndex({ userId: 1 })
+    if (!collectionNames.includes("sessions")) {
+      await db.createCollection("sessions")
+      await db.collection("sessions").createIndex({ userId: 1 })
       console.log("✓ Created session collection")
     }
 
-    if (!collectionNames.includes("account")) {
-      await db.createCollection("account")
-      await db.collection("account").createIndex({ userId: 1 })
+    if (!collectionNames.includes("accounts")) {
+      await db.createCollection("accounts")
+      await db.collection("accounts").createIndex({ userId: 1 })
       console.log("✓ Created account collection")
     }
 

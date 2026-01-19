@@ -52,13 +52,6 @@ export const DASHBOARD_PAGES: DashboardPage[] = [
     icons: Building2,
   },
   {
-    title: "Appointments",
-    description: "Manage your appointments",
-    href: "/appointments",
-    permission: Permission.MANAGE_APPOINTMENTS,
-    icons: CalendarCheck,
-  },
-  {
     title: "Settings",
     description: "Account preferences and security",
     href: "/settings",

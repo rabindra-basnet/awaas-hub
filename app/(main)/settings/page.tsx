@@ -16,12 +16,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your account preferences and security
-        </p>
-      </div>
+
 
       {hasPermission(role, Permission.VIEW_PROFILE) && (
         <ProfileSettings user={session.user} />
