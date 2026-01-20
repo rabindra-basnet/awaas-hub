@@ -18,7 +18,7 @@ export function useAdminUsers() {
       const res = await fetch("/api/auth/users");
       if (!res.ok) throw new Error("Failed to fetch users");
       return res.json();
-    }
+    },
   });
 }
 
