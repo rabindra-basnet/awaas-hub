@@ -102,7 +102,6 @@ export default function ResetPassword() {
 
   /* ---------------- FORM ---------------- */
   return (
-    <Suspense fallback={<div>Loading...</div>}>
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md shadow-lg">
           <CardHeader className="text-center">
@@ -184,6 +183,5 @@ export default function ResetPassword() {
           </CardContent>
         </Card>
       </div>
-    </Suspense>
   );
 }
