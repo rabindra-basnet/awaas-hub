@@ -116,12 +116,12 @@ FileSchema.statics.findByStoredName = function (storedName: string) {
   return this.findOne({ storedName, isDeleted: false });
 };
 
-/* Virtuals */
-FileSchema.virtual("url").get(function (this: IFileDocument) {
-  return this.isPrivate
-    ? `/api/files/private/${this.storedName}`
-    : `/api/files/public/${this.storedName}`;
-});
+// /* Virtuals */
+// FileSchema.virtual("url").get(function (this: IFileDocument) {
+//   return this.isPrivate
+//     ? `/api/files/private/${this.storedName}`
+//     : `/api/files/public/${this.storedName}`;
+// });
 
 FileSchema.virtual("readableSize").get(function (this: IFileDocument) {
   const bytes = this.size;

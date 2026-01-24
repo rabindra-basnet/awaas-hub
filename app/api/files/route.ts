@@ -1,127 +1,118 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import {
+  getSignedUrlForUpload,
+  getSignedUrlForDownload,
+  deleteFile,
+  listFiles,
+} from "@/lib/server/r2-client";
 import { getDb } from "@/lib/server/db";
 import { getServerSession } from "@/lib/server/getSession";
 import Files from "@/lib/models/Files";
-import fs from "fs";
-import path from "path";
+import { internalServerError, unauthorized } from "@/lib/error";
 
-export async function POST(req: Request) {
+// --- GET: list all files ---
+// export async function GET() {
+//   try {
+//     await getDb();
+//     const session = await getServerSession();
+//     if (!session?.user?.id) return unauthorized();
+
+//     const userId = session.user.id;
+
+//     // Step 1: list all files from R2
+//     const r2Files = await listFiles();
+//     console.log(r2Files);
+
+//     // Step 2: get all files from DB for this user
+//     const dbFiles = await Files.find({ userId }).sort({ createdAt: -1 });
+
+//     // Step 3: filter DB files that exist in R2
+//     const filteredFiles = dbFiles.filter((dbFile) =>
+//       r2Files.some((r2File) => r2File.Key === dbFile.storedName),
+//     );
+//     console.log(filteredFiles);
+//     return NextResponse.json(filteredFiles);
+//   } catch (error) {
+//     console.error("Error listing files:", error);
+//     return NextResponse.json({ error: "Error listing files" }, { status: 500 });
+//   }
+// }
+export async function GET() {
   try {
     await getDb();
-
-    const url = new URL(req.url);
-    const isPrivate = url.searchParams.get("isPrivate") === "true";
-    const propertyId = url.searchParams.get("propertyId");
-
-    // Check authentication
     const session = await getServerSession();
-    if (!session?.user?.id)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.id) return unauthorized();
+
     const userId = session.user.id;
 
-    // Parse FormData using native Web API
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
+    // 1. DB files for this user
+    const dbFiles = await Files.find({ userId }).sort({ createdAt: -1 });
+    console.log(dbFiles);
 
-    if (!file)
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+    // 2. All R2 files
+    const r2Files = await listFiles();
 
-    // Validate file exists and has content
-    if (file.size === 0)
-      return NextResponse.json({ error: "File is empty" }, { status: 400 });
+    dbFiles.forEach((dbFile) => {
+      console.log("DB:", dbFile.storedName, dbFile.userId.toString());
+    });
+    r2Files.forEach((r2File) => {
+      console.log("R2:", r2File.Key, r2File.Metadata?.userid);
+    });
 
-    // Create upload directory
-    const uploadDir = path.join(
-      process.cwd(),
-      "storage",
-      isPrivate ? "private" : "public",
+    // 3. Keep only files that exist in R2 AND metadata.userid matches
+    const filteredFiles = dbFiles.filter((dbFile) =>
+      r2Files.some(
+        (r2File) =>
+          r2File.Key === dbFile.storedName &&
+          r2File.Metadata?.userid === userId.toString(),
+      ),
     );
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
 
-    // Convert File to Buffer
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    return NextResponse.json(filteredFiles);
+  } catch (error) {
+    console.error("Error listing files:", error);
+    return NextResponse.json({ error: "Error listing files" }, { status: 500 });
+  }
+}
 
-    // Original name parts
-    // Try original name first
-    let uniqueName = file.name;
-    let filePath = path.join(uploadDir, uniqueName);
+export async function POST(request: NextRequest) {
+  await getDb();
+  const session = await getServerSession();
+  if (!session?.user?.id) return unauthorized();
 
-    const exists = await Files.exists({ storedName: uniqueName });
-
-    if (exists) {
-      const ext = path.extname(file.name);
-      const baseName = path.basename(file.name, ext);
-
-      // Use crypto for random digits
-      const randomArray = new Uint8Array(4);
-      crypto.getRandomValues(randomArray);
-      const randomDigits = Array.from(randomArray)
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("")
-        .slice(0, 8);
-
-      uniqueName = `${baseName}${randomDigits}${ext}`;
-      filePath = path.join(uploadDir, uniqueName);
-    }
-
-    // Write file to disk
-    fs.writeFileSync(filePath, buffer);
-
-    // Save metadata to MongoDB
-    const doc = await Files.create({
-      userId,
-      propertyId: propertyId || undefined,
-      filename: file.name,
-      storedName: uniqueName,
-      isPrivate,
-      mimetype: file.type,
-      size: file.size,
-    });
-
-    const urlPath = isPrivate
-      ? `/private/files/${doc.storedName}`
-      : `/files/${doc.storedName}`;
-
-    return NextResponse.json({
-      ...doc.toObject(),
-      url: urlPath,
-      message: "File uploaded successfully",
-    });
-  } catch (error: any) {
-    console.error("Upload error:", error);
+  const userId = session.user.id;
+  const { key } = await request.json();
+  try {
+    const signedUrl = await getSignedUrlForDownload(key);
+    return NextResponse.json({ signedUrl });
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || "Upload failed" },
+      { error: "Error generating download URL" },
       { status: 500 },
     );
   }
 }
 
-export async function GET() {
-  await getDb();
+// --- DELETE: remove file from R2 and DB ---
+export async function DELETE(request: NextRequest) {
+  try {
+    await getDb();
+    const session = await getServerSession();
+    if (!session?.user?.id) return unauthorized();
 
-  const session = await getServerSession();
-  if (!session?.user?.id)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { key } = await request.json();
+    if (!key)
+      return NextResponse.json({ error: "File key required" }, { status: 400 });
 
-  const userId = session.user.id;
+    // Delete from R2
+    await deleteFile(key);
 
-  const files = await Files.find({ userId }).sort({ createdAt: -1 });
+    // Delete metadata from DB
+    await Files.deleteOne({ storedName: key });
 
-  return NextResponse.json(
-    files.map((file) => ({
-      id: file._id,
-      filename: file.filename,
-      storedName: file.storedName,
-      isPrivate: file.isPrivate,
-      mimetype: file.mimetype,
-      size: file.size,
-      url: file.isPrivate
-        ? `/private/files/${file.storedName}`
-        : `/files/${file.storedName}`,
-      createdAt: file.createdAt,
-    })),
-  );
+    return NextResponse.json({ message: "File deleted successfully" });
+  } catch (error) {
+    console.error("DELETE error:", error);
+    return NextResponse.json({ error: "Error deleting file" }, { status: 500 });
+  }
 }
