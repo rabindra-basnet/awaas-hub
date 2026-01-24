@@ -2,12 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useCreateProperty } from "@/hooks/services/useProperties";
+// import { useCreateProperty } from "@/hooks/services/useProperties";
 import { hasPermission, Permission, Role } from "@/lib/rbac";
 import { getSession } from "@/lib/client/auth-client";
 import { useEffect, useState } from "react";
 import AccessDeniedPage from "@/components/access-denied";
 import PropertyForm from "../_components/property-form";
+import { useCreateProperty } from "@/lib/client/queries/properties.queries";
 
 export default function NewPropertyPage() {
     const router = useRouter();

@@ -5,8 +5,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -18,36 +16,42 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { signIn } from "@/lib/client/auth-client";
 
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+/* ---------------- ZOD SCHEMA ---------------- */
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
 
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // ✅ Email / Password login
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const onSubmit = (data: LoginFormValues) => {
     startTransition(async () => {
       try {
         await signIn.email(
           {
-            email: formData.email,
-            password: formData.password,
+            email: data.email,
+            password: data.password,
           },
           {
             onSuccess: () => {
@@ -57,7 +61,7 @@ export default function LoginPage() {
             onError: (ctx: any) => {
               toast.error(ctx.error.message || "Login failed");
             },
-          }
+          },
         );
       } catch {
         toast.error("An unexpected error occurred");
@@ -72,8 +76,8 @@ export default function LoginPage() {
           provider: "google",
           callbackURL: "/update-profile",
         });
-        toast.success("Redirecting to Google...")
-        await new Promise(() => { });
+        toast.success("Redirecting to Google...");
+        await new Promise(() => {});
       } catch {
         toast.error("Google login failed");
       }
@@ -85,50 +89,61 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
-          <CardDescription>
-            Sign in to your real estate account
-          </CardDescription>
+          <CardDescription>Sign in to your awaas hub account</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Email */}
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
               <Input
                 id="email"
-                name="email"
                 type="email"
                 placeholder="you@example.com"
-                value={formData.email}
-                onChange={handleChange}
-                required
+                {...register("email")}
                 disabled={isPending}
               />
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email.message}</p>
+              )}
             </div>
 
+            {/* Password */}
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Input
                   id="password"
-                  name="password"
-                  type={"password"}
-                  value={formData.password}
+                  type={showPassword ? "text" : "password"}
                   placeholder="**********"
-                  onChange={handleChange}
-                  required
-                  disabled={isPending}
+                  {...register("password")}
                   className="pr-10"
+                  disabled={isPending}
                 />
-                {/* Optional toggle for password visibility */}
-                {/* <button
+                <button
                   type="button"
-                  onClick={() => setShowPassword((p) => !p)}
-                  className="absolute inset-y-0 right-2 text-muted-foreground"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                   disabled={isPending}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button> */}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-sm text-red-500">
+                  {errors.password.message}
+                </p>
+              )}
+
+              {/* Forgot Password link */}
+              <div className="text-right mt-1">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-primary underline hover:text-primary/80"
+                >
+                  Forgot password?
+                </Link>
               </div>
             </div>
 
@@ -144,7 +159,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="relative">
+          <div className="relative my-4">
             <Separator />
             <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-sm text-muted-foreground">
               Or continue with
@@ -167,7 +182,7 @@ export default function LoginPage() {
             )}
           </Button>
 
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-center text-sm text-muted-foreground mt-4">
             Don&apos;t have an account?{" "}
             <Link
               href="/signup"

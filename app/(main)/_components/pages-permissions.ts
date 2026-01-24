@@ -10,6 +10,7 @@ import {
   Users,
   BarChart3,
   LayoutDashboard,
+  File,
 } from "lucide-react";
 import { Permission } from "@/lib/rbac";
 
@@ -36,12 +37,20 @@ export const DASHBOARD_PAGES: DashboardPage[] = [
     permission: Permission.VIEW_PROPERTIES,
     icons: Home,
   },
+
   {
     title: "Favorites",
     description: "Your saved properties",
     href: "/favorites",
     permission: Permission.VIEW_FAVORITES,
     icons: Heart,
+  },
+  {
+    title: "Files",
+    description: "View and manage uploaded files",
+    href: "/files",
+    permission: Permission.VIEW_FILES, // all roles with view can see
+    icons: File,
   },
   {
     title: "Manage Properties",

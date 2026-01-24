@@ -7,8 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 
-import { useCreateAppointment } from "@/hooks/services/useAppointments";
-import { useProperties } from "@/hooks/services/useProperties";
+// import { useCreateAppointment } from "@/hooks/services/useAppointments";
+// import { useProperties } from "@/hooks/services/useProperties";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useCreateAppointment } from "@/lib/client/queries/appointments.queries";
+import { useProperties } from "@/lib/client/queries/properties.queries";
 
 export const appointmentSchema = z.object({
   title: z.string().min(1, "Title is required"),

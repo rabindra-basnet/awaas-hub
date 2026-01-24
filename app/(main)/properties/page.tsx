@@ -1,182 +1,103 @@
-// "use client";
-
-// import { useEffect, useState } from "react";
-// import Link from "next/link";
-// import { useRouter } from "next/navigation";
-
-// import { hasPermission, Permission, Role } from "@/lib/rbac";
-// import { Button } from "@/components/ui/button";
-// import { getSession } from "@/lib/client/auth-client";
-// import { useProperties, useToggleFavorite, useDeleteProperty } from "@/hooks/services/useProperties";
-// import AccessDeniedPage from "@/components/access-denied";
-// import { DataTable } from "./_components/table/data-table";
-// import { createColumns } from "./_components/table/columns";
-
-// export default function PropertiesTablePage() {
-//     const router = useRouter();
-//     const [canView, setCanView] = useState<boolean | null>(null);
-//     const [canManage, setCanManage] = useState<boolean>(false);
-
-//     // Check RBAC permissions
-//     useEffect(() => {
-//         const checkPermissions = async () => {
-//             try {
-//                 const { data: session } = await getSession();
-
-//                 if (!session?.user) {
-//                     router.replace("/login");
-//                     return;
-//                 }
-
-//                 const role = session.user.role as Role;
-
-//                 if (!hasPermission(role, Permission.VIEW_PROPERTIES)) {
-//                     setCanView(false);
-//                     return;
-//                 }
-
-//                 setCanView(true);
-//                 setCanManage(hasPermission(role, Permission.MANAGE_PROPERTIES));
-//             } catch (err) {
-//                 console.error(err);
-//                 router.replace("/login");
-//             }
-//         };
-
-//         checkPermissions();
-//     }, [router]);
-
-//     // Fetch properties
-//     const { data: properties = [], isLoading, error } = useProperties();
-//     const toggleFav = useToggleFavorite();
-//     const deleteProperty = useDeleteProperty();
-
-//     const handleToggleFavorite = (propertyId: string, isFav: boolean) => {
-//         toggleFav.mutate({ propertyId, isFav });
-//     };
-
-//     const handleDelete = (id: string) => {
-//         deleteProperty.mutate(id);
-//     };
-
-//     const columns = createColumns({
-//         canManage,
-//         favorites: properties.filter((p: any) => p.isFavorite).map((p: any) => p._id),
-//         onToggleFavorite: handleToggleFavorite,
-//         onDelete: handleDelete,
-//     });
-
-//     if (canView === null) {
-//         return (
-//             <div className="min-h-screen flex items-center justify-center">
-//                 Checking permissions...
-//             </div>
-//         );
-//     }
-//     if (canView === false) return <AccessDeniedPage />;
-//     if (isLoading) {
-//         return (
-//             <div className="min-h-screen flex items-center justify-center">
-//                 Loading properties...
-//             </div>
-//         );
-//     }
-//     if (error) {
-//         return (
-//             <div className="min-h-screen flex items-center justify-center text-red-500">
-//                 Failed to load properties
-//             </div>
-//         );
-//     }
-
-//     return (
-//         <div className="w-full max-w-7xl mx-auto py-6">
-//             {/* <div className="flex items-right justify-end mb-6">
-//                 {canManage && (
-//                     <Link href="/properties/new">
-//                         <Button>Create New Property</Button>
-//                     </Link>
-//                 )}
-//             </div> */}
-
-//             {/* Scrollable container */}
-//             <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
-//                 <DataTable columns={columns} data={properties} />
-//             </div>
-//         </div>
-//     );
-
-// }
-
 "use client";
 
-import Link from "next/link";
-
 import { hasPermission, Permission, Role } from "@/lib/rbac";
-import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/client/auth-client";
-import {
-  useProperties,
-  useToggleFavorite,
-  useDeleteProperty,
-} from "@/hooks/services/useProperties";
 import AccessDeniedPage from "@/components/access-denied";
 import { DataTable } from "./_components/table/data-table";
 import { createColumns } from "./_components/table/columns";
-import { useRolePermissions } from "@/hooks/use-role-permissions";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Loading from "@/components/loading";
+import {
+  useDeleteProperty,
+  useProperties,
+  useToggleFavorite,
+} from "@/lib/client/queries/properties.queries";
 
-export default function PropertiesTablePage() {
+function usePermissionCheck() {
   const router = useRouter();
-  const [canView, setCanView] = useState<boolean | null>(null);
-  const [canManage, setCanManage] = useState(false);
+  const [permissions, setPermissions] = useState<{
+    canView: boolean | null;
+    canManage: boolean;
+  }>({ canView: null, canManage: false });
 
   useEffect(() => {
     const checkPermissions = async () => {
-      const { data: session } = await getSession();
+      try {
+        const { data: session } = await getSession();
 
-      if (!session?.user) {
-        router.replace("/login");
-        return;
+        if (!session?.user) {
+          router.replace("/login");
+          return;
+        }
+
+        const role = session.user.role as Role;
+        const canView = hasPermission(role, Permission.VIEW_PROPERTIES);
+        const canManage = hasPermission(role, Permission.MANAGE_PROPERTIES);
+
+        setPermissions({ canView, canManage });
+      } catch (error) {
+        console.error("Permission check failed:", error);
+        setPermissions({ canView: false, canManage: false });
       }
-
-      const role = session.user.role as Role;
-
-      if (!hasPermission(role, Permission.VIEW_PROPERTIES)) {
-        setCanView(false);
-        return;
-      }
-
-      setCanView(true);
-      setCanManage(hasPermission(role, Permission.MANAGE_PROPERTIES));
     };
 
     checkPermissions();
   }, [router]);
 
+  return permissions;
+}
+function PropertiesContent({ canManage }: { canManage: boolean }) {
   const { data: properties = [], isLoading, error } = useProperties();
   const toggleFav = useToggleFavorite();
   const deleteProperty = useDeleteProperty();
 
+  const favoriteIds = properties
+    .filter((p: any) => p.isFavorite)
+    .map((p: any) => p._id);
+
   const columns = createColumns({
     canManage,
-    favorites: properties
-      .filter((p: any) => p.isFavorite)
-      .map((p: any) => p._id),
+    favorites: favoriteIds,
     onToggleFavorite: (id, isFav) =>
       toggleFav.mutate({ propertyId: id, isFav }),
     onDelete: (id) => deleteProperty.mutate(id),
   });
 
-  if (canView === null) return null;
-  if (canView === false) return <AccessDeniedPage />;
-  if (isLoading) return <div className="p-6">Loading...</div>;
-  if (error) return <div className="p-6 text-red-500">Failed to load</div>;
+  if (isLoading) return <Loading />;
+
+  if (error) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-red-500 font-medium">Failed to load properties</p>
+        <p className="text-sm text-gray-600 mt-2">
+          Please try refreshing the page
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-7xl mx-auto py-6 px-5">
       <DataTable columns={columns} data={properties} canManage={canManage} />
     </div>
   );
+}
+
+// Main page component
+export default function PropertiesTablePage() {
+  const { canView, canManage } = usePermissionCheck();
+
+  // Still checking permissions
+  if (canView === null) {
+    return <Loading />;
+  }
+
+  // Access denied
+  if (!canView) {
+    return <AccessDeniedPage />;
+  }
+
+  // Authorized - show content
+  return <PropertiesContent canManage={canManage} />;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "@/lib/client/auth-client";
-import { useDashboardData } from "@/hooks/services/useDashboardData";
+// import { useDashboardData } from "@/hooks/services/useDashboardData";
 
 import StatsGrid from "./_components/stat-card";
 import RecentPropertiesCard from "./_components/recent-properties-card";
@@ -9,6 +9,7 @@ import TodayScheduleCard from "./_components/today-schedule-card";
 
 import { Home, Building2, Users, DollarSign } from "lucide-react";
 import Loading from "../_components/loading";
+import { useDashboardData } from "@/lib/client/queries/dashboard.queries";
 
 export const iconMap = {
   Home,
