@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -41,7 +41,8 @@ type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
 export default function ResetPassword() {
   const router = useRouter();
-  const token = useSearchParams().get("token");
+  const searchParams = useSearchParams();
+  const [token, setToken] = useState<string | null>(null);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -55,6 +56,11 @@ export default function ResetPassword() {
   } = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
   });
+
+  // Get token client-side only
+  useEffect(() => {
+    setToken(searchParams.get("token"));
+  }, [searchParams]);
 
   const onSubmit = (data: ResetPasswordFormValues) => {
     if (!token) return;
