@@ -1,15 +1,23 @@
 "use client";
 
 import { useSession } from "@/lib/client/auth-client";
-import { useProperty, useDeleteProperty, useToggleFavorite } from "@/hooks/services/useProperties";
 import { hasPermission, Permission, Role } from "@/lib/rbac";
 import { Heart, Pencil, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { use } from "react";
 import { useRouter } from "next/navigation";
 import DeletePropertyDialog from "../_components/delete-property";
+import {
+  useDeleteProperty,
+  useProperty,
+  useToggleFavorite,
+} from "@/lib/client/queries/properties.queries";
 
-export default function PropertyPage({ params }: { params: Promise<{ id: string }> }) {
+export default function PropertyPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const router = useRouter();
   const { data: session } = useSession();
@@ -19,13 +27,20 @@ export default function PropertyPage({ params }: { params: Promise<{ id: string 
 
   const role = session?.user?.role as Role;
   const isOwner = property?.sellerId === session?.user?.id;
-  const canManage = hasPermission(role, Permission.MANAGE_PROPERTIES) && (role === Role.ADMIN || isOwner);
+  const canManage =
+    hasPermission(role, Permission.MANAGE_PROPERTIES) &&
+    (role === Role.ADMIN || isOwner);
 
   if (isLoading)
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
   if (error || !property) return <div>Error loading property</div>;
 
-  const { title, location, price, status, images, description, isFavorite } = property;
+  const { title, location, price, status, images, description, isFavorite } =
+    property;
   const displayPrice = price ? `$${Number(price).toLocaleString()}` : "N/A";
   const propertyImages = images?.length ? images : ["/images/placeholder.png"];
 
@@ -44,18 +59,25 @@ export default function PropertyPage({ params }: { params: Promise<{ id: string 
 
         <div className="flex items-center gap-4">
           <button
-            onClick={() => toggleFav.mutate({ propertyId: id, isFav: !!isFavorite })}
+            onClick={() =>
+              toggleFav.mutate({ propertyId: id, isFav: !!isFavorite })
+            }
             className="p-2 rounded hover:bg-gray-100"
           >
             <Heart
               size={24}
-              className={isFavorite ? "text-red-500 fill-current" : "text-gray-400"}
+              className={
+                isFavorite ? "text-red-500 fill-current" : "text-gray-400"
+              }
             />
           </button>
 
           {canManage && (
             <div className="flex gap-4">
-              <Link href={`/properties/${id}/edit`} className="text-amber-600 hover:text-amber-800">
+              <Link
+                href={`/properties/${id}/edit`}
+                className="text-amber-600 hover:text-amber-800"
+              >
                 <Pencil size={20} />
               </Link>
               <DeletePropertyDialog
@@ -74,14 +96,21 @@ export default function PropertyPage({ params }: { params: Promise<{ id: string 
 
       <p className="mb-6">
         Status:{" "}
-        <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusClass(status)}`}>
+        <span
+          className={`px-3 py-1 rounded-full text-sm font-medium ${statusClass(status)}`}
+        >
           {status || "Unknown"}
         </span>
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {propertyImages.map((img: string | Blob | undefined, idx: number) => (
-          <img key={idx} src={img} alt={`${title} - ${idx + 1}`} className="w-full h-56 object-cover rounded-lg shadow-sm" />
+          <img
+            key={idx}
+            src={img}
+            alt={`${title} - ${idx + 1}`}
+            className="w-full h-56 object-cover rounded-lg shadow-sm"
+          />
         ))}
       </div>
     </div>
@@ -96,4 +125,3 @@ function statusClass(status: string) {
   };
   return classes[status?.toLowerCase()] || "bg-gray-100 text-gray-800";
 }
-

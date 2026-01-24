@@ -2,12 +2,6 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  useAppointment,
-  useDeleteAppointment,
-  useUpdateAppointmentStatus,
-} from "@/hooks/services/useAppointments";
-import { useProperties } from "@/hooks/services/useProperties";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -29,6 +23,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import Loading from "@/components/loading";
+import {
+  useAppointment,
+  useDeleteAppointment,
+  useUpdateAppointmentStatus,
+} from "@/lib/client/queries/appointments.queries";
+import { useProperties } from "@/lib/client/queries/properties.queries";
 
 // Badge component for status
 const StatusBadge = ({ status }: { status: string }) => {
@@ -70,7 +70,9 @@ export default function AppointmentDetailPage() {
     return <Loading message="Fetching data..." />;
   if (!appointment) return <p>Appointment not found</p>;
 
-  const property = properties.find((p: any) => p._id === appointment.propertyId);
+  const property = properties.find(
+    (p: any) => p._id === appointment.propertyId,
+  );
 
   const isScheduled = appointment.status === "scheduled";
   const isApproved = appointment.status === "approved";

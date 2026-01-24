@@ -1,5 +1,4 @@
-// hooks/useAdminAnalytics.ts
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 export interface Stats {
   totalUsers: number;
@@ -19,14 +18,27 @@ export interface AnalyticsResponse {
   charts: ChartData;
 }
 
-export function useAdminAnalytics() {
-  return useQuery<AnalyticsResponse, Error>({
+/* ======================
+   Query Options
+====================== */
+export const adminAnalyticsQuery = () =>
+  queryOptions<AnalyticsResponse>({
     queryKey: ["adminAnalytics"],
     queryFn: async () => {
       const res = await fetch("/api/analytics");
-      if (!res.ok) throw new Error("Failed to fetch admin analytics");
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch admin analytics");
+      }
+
       return res.json();
     },
-    refetchOnWindowFocus: false, // optional: avoid auto refetch on focus
+    refetchOnWindowFocus: false,
   });
-}
+
+/* ======================
+   Hook Wrapper
+====================== */
+export const useAdminAnalytics = () => {
+  return useQuery(adminAnalyticsQuery());
+};
