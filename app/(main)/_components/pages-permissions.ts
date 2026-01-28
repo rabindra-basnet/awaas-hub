@@ -37,7 +37,13 @@ export const DASHBOARD_PAGES: DashboardPage[] = [
     permission: Permission.VIEW_PROPERTIES,
     icons: Home,
   },
-
+  {
+    title: "Appointments",
+    description: "Browse available properties",
+    href: "/appointments",
+    permission: Permission.MANAGE_APPOINTMENTS,
+    icons: CalendarCheck,
+  },
   {
     title: "Favorites",
     description: "Your saved properties",

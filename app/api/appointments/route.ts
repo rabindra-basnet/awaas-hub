@@ -14,7 +14,7 @@ export async function GET() {
     date: 1,
   });
 
-  return NextResponse.json({ message: "response" });
+  return NextResponse.json({ message: "Appointments fetched", data: d });
 }
 
 // // export async function POST(req: Request) {

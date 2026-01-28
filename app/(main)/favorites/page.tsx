@@ -37,8 +37,8 @@ export default function BuyerFavoritesPage() {
 
       // Check if user can view or manage files/favorites
       const allowed = hasAnyPermission(role, [
-        // Permission.VIEW_FILES,
-        Permission.MANAGE_FILES,
+        Permission.VIEW_FAVORITES,
+        Permission.MANAGE_FAVORITES,
       ]);
       setHasAccess(allowed);
 
