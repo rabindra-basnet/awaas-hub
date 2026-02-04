@@ -2,11 +2,11 @@ import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { nextCookies } from "better-auth/next-js";
 import { connectToDatabase } from "./db";
-import { admin } from "better-auth/plugins";
-
-import { lastLoginMethod, openAPI } from "better-auth/plugins";
+import { admin, anonymous } from "better-auth/plugins";
+import { lastLoginMethod } from "better-auth/plugins";
 import { hashPassword, verifyPassword } from "./password";
 import { sendResetPasswordEmail } from "../emails/send-reset-email";
+import type { HookEndpointContext } from "@better-auth/core";
 
 if (!process.env.BETTER_AUTH_SECRET) {
   throw new Error("❌ BETTER_AUTH_SECRET is not defined");
@@ -19,13 +19,11 @@ if (!process.env.MONGODB_URI) {
 // Connect to DB once at startup (Next.js module scope is reused in production)
 const { db, client } = await connectToDatabase();
 
-const adminids = { adminUserIds: ["6968f2f22fff902bf245f308"] };
-
 export const auth = betterAuth({
   database: mongodbAdapter(db, { client, debugLogs: false, usePlural: true }),
   secret: process.env.BETTER_AUTH_SECRET,
-
   baseURL: process.env.BETTER_AUTH_URL,
+
   emailAndPassword: {
     enabled: true,
     password: {
@@ -34,15 +32,14 @@ export const auth = betterAuth({
     },
     requireEmailVerification: false,
     autoSignIn: false,
-    sendResetPassword: async ({ user, url, token }, request) => {
-      void sendResetPasswordEmail({
+    sendResetPassword: async ({ user, url, token }, _request) => {
+      await sendResetPasswordEmail({
         email: user.email,
         name: user.name ?? null,
         url,
       });
     },
-    onPasswordReset: async ({ user }, request) => {
-      // your logic here
+    onPasswordReset: async ({ user }, _request) => {
       console.log(`Password for user ${user.email} has been reset.`);
     },
   },
@@ -54,7 +51,19 @@ export const auth = betterAuth({
     },
   },
 
-  plugins: [nextCookies(), lastLoginMethod()],
+  plugins: [
+    nextCookies(),
+    lastLoginMethod(),
+    anonymous({
+      generateName: () => "Guest",
+      generateRandomEmail: () => "guest@awaashub.com",
+      onLinkAccount: async ({ anonymousUser, newUser }) => {
+        // perform actions like moving the cart items from anonymous user to the new user
+        console.table(anonymousUser);
+        console.log(newUser);
+      },
+    }),
+  ],
 
   user: {
     additionalFields: {
@@ -72,4 +81,5 @@ export const auth = betterAuth({
   },
 });
 
+// Type for session
 export type Session = typeof auth.$Infer.Session;

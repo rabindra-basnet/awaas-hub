@@ -1,6 +1,5 @@
 "use client";
 
-import type React from "react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -137,9 +136,15 @@ export default function LoginPage() {
               )}
 
               {/* Forgot Password link */}
-              <div className="text-right mt-1">
+              <div
+                className={`text-right mt-1 ${
+                  isPending ? "pointer-events-none opacity-50 select-none" : ""
+                }`}
+              >
                 <Link
                   href="/forgot-password"
+                  aria-disabled={isPending}
+                  tabIndex={isPending ? -1 : 0}
                   className="text-sm text-primary underline hover:text-primary/80"
                 >
                   Forgot password?
