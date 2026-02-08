@@ -51,7 +51,10 @@ export default function DashboardLayout({
           <DashboardHeader />
 
           {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto">{children}</div>
+          <div className="w-full overflow-auto">
+          {children}
+
+          </div>
         </main>
       </div>
     </SidebarProvider>

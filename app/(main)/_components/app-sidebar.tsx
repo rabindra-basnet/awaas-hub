@@ -111,8 +111,8 @@ export default function AppSidebar({ session }: { session: any }) {
                         className={cn(
                           "flex items-center w-full transition-all duration-200 rounded-lg",
                           isCollapsed
-                            ? "justify-center p-3 mx-1.5 my-0.5"
-                            : "gap-6 px-4 py-3 mx-2 my-0.5",
+                            ? "justify-center p-3"
+                            : "gap-6 px-4 py-3",
                           isActive
                             ? "bg-primary/10 text-primary font-medium shadow-sm"
                             : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"

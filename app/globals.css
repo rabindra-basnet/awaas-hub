@@ -140,6 +140,13 @@
 
 /* Add this to your globals.css file */
 
+html {
+  /* This reserves space for the scrollbar so the layout doesn't shift */
+  scrollbar-gutter: stable;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
 /* Custom Scrollbar Styles */
 * {
   scrollbar-width: thin;

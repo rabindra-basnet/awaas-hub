@@ -21,7 +21,7 @@ export async function GET(
 
         const { id: propertyId } = await params;
 
-        console.log(propertyId)
+        // console.log(propertyId)
 
         // Find all files for this property
         const files = await Files.find({
@@ -29,7 +29,7 @@ export async function GET(
             isDeleted: false,
         }).sort({ createdAt: 1 }); // Sort by upload order
 
-        console.log(files)
+        // console.log(files)
 
         if (!files || files.length === 0) {
             return notFound("No files found");
