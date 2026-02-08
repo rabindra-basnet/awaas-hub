@@ -429,6 +429,7 @@ import {
   useReverseGeocode,
 } from "@/lib/client/queries/nepalgeocoding.queries";
 import { useDebounce } from "@/hooks/use-debounce";
+import { toast } from "sonner";
 // import {
 //   useNepalGeocoding,
 //   useReverseGeocode,
@@ -482,14 +483,14 @@ export default function HeroSection({
 
   //   useEffect(() => {
   //     if (reverseCity) {
-  //       //   setCurrentCity(reverseCity);
+  //       setCurrentCity(reverseCity);
   //       setSearchQuery(reverseCity);
   //     }
   //   }, [reverseCity]);
 
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
-      alert("Geolocation not supported");
+      toast.error("Geolocation not supported");
       return;
     }
 
@@ -508,7 +509,7 @@ export default function HeroSection({
         setIsLocating(false);
       },
       () => {
-        alert("Location access denied");
+        toast.error("Location access denied");
         setIsLocating(false);
       },
       { enableHighAccuracy: true },

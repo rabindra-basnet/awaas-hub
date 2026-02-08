@@ -7,7 +7,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import AppSidebar from "./_components/app-sidebar";
 import DashboardHeader from "./_components/dashboard-header";
 import AccessDeniedPage from "@/components/access-denied";
-import { Role, Permission, hasPermission } from "@/lib/rbac";
+import { Role, Permission, hasPermission, hasAnyPermission } from "@/lib/rbac";
 
 export default function DashboardLayout({
   children,
@@ -30,7 +30,12 @@ export default function DashboardLayout({
   const role = session.user.role as Role;
 
   // 2️⃣ Logged in but no dashboard permission
-  if (!hasPermission(role, Permission.VIEW_DASHBOARD)) {
+  if (
+    !hasAnyPermission(role, [
+      Permission.VIEW_DASHBOARD,
+      Permission.VIEW_PROPERTIES,
+    ])
+  ) {
     return <AccessDeniedPage />;
   }
 
@@ -46,9 +51,7 @@ export default function DashboardLayout({
           <DashboardHeader />
 
           {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto">
-            {children}
-          </div>
+          <div className="flex-1 overflow-y-auto">{children}</div>
         </main>
       </div>
     </SidebarProvider>

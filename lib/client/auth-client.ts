@@ -3,6 +3,7 @@ import {
   inferAdditionalFields,
   lastLoginMethodClient,
   adminClient,
+  anonymousClient,
 } from "better-auth/client/plugins";
 import { auth } from "../server/auth";
 
@@ -11,6 +12,7 @@ export const authClient = createAuthClient({
   plugins: [
     inferAdditionalFields<typeof auth>(),
     lastLoginMethodClient(),
+    anonymousClient()
     // adminClient(),
   ],
 });

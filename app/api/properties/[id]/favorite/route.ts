@@ -20,7 +20,6 @@ export async function POST(
 
   const role = session.user.role as Role;
 
-  // Check if user has VIEW or MANAGE permission for files/favorites
   const permission = [Permission.VIEW_FAVORITES, Permission.MANAGE_FAVORITES];
   if (!hasAnyPermission(role, permission))
     return forbidden("You do not have access to view favorites");

@@ -11,6 +11,7 @@ import {
   useDeleteProperty,
   useProperty,
   useToggleFavorite,
+  usePropertyImages, // ✅ Changed import
 } from "@/lib/client/queries/properties.queries";
 
 export default function PropertyPage({
@@ -20,10 +21,15 @@ export default function PropertyPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  
   const { data: session } = useSession();
   const { data: property, isLoading, error } = useProperty(id);
+  const { data: images, isLoading: loadingImages } = usePropertyImages(id);
+
   const toggleFav = useToggleFavorite();
   const deleteProperty = useDeleteProperty();
+
+  // ✅ Fetch images by propertyId
 
   const role = session?.user?.role as Role;
   const isOwner = property?.sellerId === session?.user?.id;
@@ -39,10 +45,14 @@ export default function PropertyPage({
     );
   if (error || !property) return <div>Error loading property</div>;
 
-  const { title, location, price, status, images, description, isFavorite } =
-    property;
+  const { title, location, price, status, description, isFavorite } = property;
   const displayPrice = price ? `$${Number(price).toLocaleString()}` : "N/A";
-  const propertyImages = images?.length ? images : ["/images/placeholder.png"];
+
+  // ✅ Use fetched images with presigned URLs
+  const propertyImages =
+    images && images.length > 0
+      ? images.map((img: any) => img.url)
+      : ["/images/placeholder.png"];
 
   return (
     <div className="max-w-3xl mx-auto py-12 px-4">
@@ -103,16 +113,28 @@ export default function PropertyPage({
         </span>
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {propertyImages.map((img: string | Blob | undefined, idx: number) => (
-          <img
-            key={idx}
-            src={img}
-            alt={`${title} - ${idx + 1}`}
-            className="w-full h-56 object-cover rounded-lg shadow-sm"
-          />
-        ))}
-      </div>
+      {/* ✅ Show loading state for images */}
+      {loadingImages ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="w-full h-56 bg-gray-200 animate-pulse rounded-lg"
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {propertyImages.map((img: string, idx: number) => (
+            <img
+              key={idx}
+              src={img}
+              alt={`${title} - ${idx + 1}`}
+              className="w-full h-56 object-cover rounded-lg shadow-sm"
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

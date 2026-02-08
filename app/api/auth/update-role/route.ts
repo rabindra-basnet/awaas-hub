@@ -42,9 +42,9 @@ export async function POST(req: NextRequest) {
         }
 
         // 5️⃣ Prevent updating admin role
-        // if (user.role === Role.ADMIN) {
-        //     return NextResponse.json({ message: "Cannot update admin role" }, { status: 403 });
-        // }
+        if (user.role === Role.ADMIN) {
+            return NextResponse.json({ message: "Cannot update admin role" }, { status: 403 });
+        }
 
         // 6️⃣ Check if role already matches
         if (user.role === role.trim()) {

@@ -95,12 +95,13 @@ export const useToggleFavorite = () =>
 
 /* ======================
    CREATE
-====================== */
+// ====================== */
+
 export const useCreateProperty = () => {
   const toggleFav = useToggleFavorite();
 
   return useMutation({
-    mutationFn: async (data: PropertyForm) => {
+    mutationFn: async (data: PropertyForm & { fileIds: string[] }) => {
       const res = await fetch("/api/properties/new", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,11 +114,12 @@ export const useCreateProperty = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({
         queryKey: propertyKeys.all,
+        exact: false,
       });
 
       // ensure backend favorite table is initialized
       toggleFav.mutate({
-        propertyId: data._id,
+        propertyId: data.property._id, // ✅ Note: backend returns { property, files }
         isFav: false,
       });
     },
@@ -146,6 +148,9 @@ export const useUpdateProperty = () =>
       queryClient.invalidateQueries({
         queryKey: propertyKeys.detail(id),
       });
+      queryClient.invalidateQueries({
+        queryKey: ["property-images", id],
+      });
     },
   });
 
@@ -169,5 +174,24 @@ export const useDeleteProperty = () =>
       queryClient.removeQueries({
         queryKey: propertyKeys.detail(id),
       });
+      queryClient.invalidateQueries({
+        queryKey: ["property-images", id],
+      });
     },
   });
+
+// Fetch property images by propertyId
+export const usePropertyImages = (propertyId: string | undefined) => {
+  return useQuery({
+    queryKey: ["property-images", propertyId],
+    queryFn: async () => {
+      if (!propertyId) return [];
+
+      const res = await fetch(`/api/properties/${propertyId}/images`);
+      if (!res.ok) throw new Error("Failed to fetch property images");
+      const data = await res.json();
+      return data.images || [];
+    },
+    enabled: !!propertyId,
+  });
+};
