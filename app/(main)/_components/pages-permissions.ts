@@ -53,13 +53,6 @@ export const DASHBOARD_PAGES: DashboardPage[] = [
     icons: File,
   },
   {
-    title: "Manage Properties",
-    description: "Create and manage listings",
-    href: "/manage-properties",
-    permission: Permission.MANAGE_PROPERTIES,
-    icons: Building2,
-  },
-  {
     title: "Settings",
     description: "Account preferences and security",
     href: "/settings",
