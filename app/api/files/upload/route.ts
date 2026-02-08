@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File;
     const isPrivate = formData.get("isPrivate") === "true";
     const propertyId = (formData.get("propertyId") as string) || undefined;
+    console.log(file)
 
     if (!file) return notFound("No File found");
 
