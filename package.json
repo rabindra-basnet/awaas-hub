@@ -38,6 +38,7 @@
     "clsx": "^2.1.1",
     "date-fns": "4.1.0",
     "dlx": "^0.2.1",
+    "framer-motion": "^12.34.0",
     "input-otp": "1.4.1",
     "label": "^0.2.2",
     "leaflet": "^1.9.4",
