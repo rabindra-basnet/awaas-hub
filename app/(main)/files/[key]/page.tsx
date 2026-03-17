@@ -8,6 +8,7 @@ import { use } from "react";
 import Image from "next/image";
 import { Role, Permission, hasPermission } from "@/lib/rbac";
 import { useSession } from "@/lib/client/auth-client";
+import { cn } from "@/lib/utils";
 
 type FileDetails = {
   signedUrl: string;
@@ -61,6 +62,7 @@ export default function FilePreviewPage({
     );
   }
 
+  const isLocked = false;
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       {/* ---------- HEADER ---------- */}
@@ -89,6 +91,16 @@ export default function FilePreviewPage({
                 priority
                 className="max-h-[65vh] w-auto object-contain rounded-md transition-transform duration-200 hover:scale-[1.01]"
               />
+              {/*<img
+                src={data.signedUrl}
+                alt={data.filename}
+                className={cn(
+                  "absolute inset-0 w-full h-full object-cover transition-all duration-700",
+                  isLocked
+                    ? "blur-2xl scale-110 opacity-50"
+                    : "group-hover:scale-105",
+                )}
+              />*/}
             </div>
 
             <div className="px-4 py-2 text-xs text-muted-foreground flex items-center justify-between">
