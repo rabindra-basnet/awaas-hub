@@ -8,6 +8,7 @@ import AppSidebar from "./_components/app-sidebar";
 import DashboardHeader from "./_components/dashboard-header";
 import AccessDeniedPage from "@/components/access-denied";
 import { Role, Permission, hasAnyPermission } from "@/lib/rbac";
+import { AnonymousProvider } from "../guest-provider";
 
 // Paths accessible without authentication
 const PUBLIC_PATHS = [

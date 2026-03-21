@@ -1040,7 +1040,7 @@ export default function PropertyPage({
                   key={idx}
                   onClick={() => setCurrentIndex(idx)}
                   className={cn(
-                    "relative shrink-0 w-18 h-13.5 md:w-22 `md:h-16.5 rounded-xl overflow-hidden border-2 transition-all duration-200",
+                    "relative shrink-0 w-18 h-13.5 md:w-22 md:h-16.5 rounded-xl overflow-hidden border-2 transition-all duration-200",
                     currentIndex === idx
                       ? "border-primary ring-2 ring-primary/30 scale-[1.04]"
                       : "border-border/50 hover:border-border",

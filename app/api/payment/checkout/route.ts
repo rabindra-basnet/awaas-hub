@@ -33,7 +33,7 @@ export async function POST(req: Request) {
 
     await getDb();
 
-    const credits = 1;
+    const creditsToAdd = 1;
     const amount = 100;
 
     const transactionId = `SUB-${Date.now()}`;
@@ -44,7 +44,8 @@ export async function POST(req: Request) {
     await Subscription.create({
       userId,
       propertyId,
-      credits,
+      credits: 0,
+      creditsToAdd,
       amount,
       status: "pending",
       transactionId,
