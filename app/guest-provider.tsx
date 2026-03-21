@@ -13,8 +13,9 @@ export function AnonymousProvider({ children }: Props) {
     const init = async () => {
       try {
         const sessionResult = await authClient.getSession();
+        console.log(sessionResult);
 
-        if (!sessionResult?.data?.user) {
+        if (!sessionResult?.data == null) {
           const signInResult = await authClient.signIn.anonymous();
           const userId = signInResult?.data?.user?.id;
 
