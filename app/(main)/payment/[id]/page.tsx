@@ -224,7 +224,7 @@ export default async function PaymentStatusPage({
 
           {!payment && (
             <Link
-              href={`/properties/${payment!.propertyId}`}
+              href={"/properties"}
               className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white"
             >
               Back to Properties

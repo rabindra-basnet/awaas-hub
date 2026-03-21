@@ -55,12 +55,7 @@ export const auth = betterAuth({
     lastLoginMethod(),
     anonymous({
       generateName: () => "Guest",
-      generateRandomEmail: () => "guest@awaashub.com",
-      // onLinkAccount: async ({ anonymousUser, newUser }) => {
-      //   // perform actions like moving the cart items from anonymous user to the new user
-      //   console.table(anonymousUser);
-      //   console.log(newUser);
-      // },
+      emailDomainName: "awaashub.com",
     }),
   ],
 

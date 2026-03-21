@@ -22,8 +22,7 @@ export default function Providers({
       >
         <QueryClientProvider client={queryClient}>
           <Toaster />
-          <AnonymousProvider />
-          {children}
+          <AnonymousProvider>{children}</AnonymousProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </>

@@ -6,6 +6,8 @@ export interface ISubscription {
   userId: Types.ObjectId;
   propertyId: Types.ObjectId;
   credits: number;
+  creditsToAdd: number;
+  creditsGranted: boolean;
   amount: number;
   status: SubscriptionStatus;
   transactionId: string;
@@ -31,9 +33,15 @@ const subscriptionSchema = new Schema<ISubscription>(
     },
     credits: {
       type: Number,
+      default: 0,
+    },
+    creditsToAdd: {
+      type: Number,
       required: true,
-      default: 1,
-      min: 1,
+    },
+    creditsGranted: {
+      type: Boolean,
+      default: false,
     },
     amount: {
       type: Number,
