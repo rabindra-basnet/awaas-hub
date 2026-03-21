@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,25 +29,35 @@ import {
   Utensils,
   ImageIcon,
   Check,
+  Map,
+  LocateFixed,
+  Crosshair,
+  Pentagon,
+  Search,
+  Trash2,
 } from "lucide-react";
 import { usePropertyImages } from "@/lib/client/queries/properties.queries";
 import { cn } from "@/lib/utils";
 
+// ── Schema ─────────────────────────────────────────────────────────────────
 const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   price: z.number().positive("Price must be positive"),
   location: z.string().min(1, "Location is required"),
-  description: z.string().optional(),
+  description: z.string().max(5000).optional(),
   category: z.string().min(1, "Property type is required"),
-  status: z.string().min(1, "Status is required"),
-  area: z.string().optional(),
-  face: z.string().optional(),
-  roadType: z.string().optional(),
+  status: z.enum(["available", "booked", "sold"]),
+  area: z.string().min(1, "Area is required"),
+  face: z.string().min(1, "Property Face is required"),
+  roadType: z.string().min(1, "Property Road type is required"),
   roadAccess: z.string().optional(),
-  negotiable: z.boolean().default(false),
+  negotiable: z.boolean(),
   municipality: z.string().optional(),
   wardNo: z.string().optional(),
   ringRoad: z.string().optional(),
+  // map fields — optional, step is skippable
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   nearHospital: z.string().optional(),
   nearAirport: z.string().optional(),
   nearSupermarket: z.string().optional(),
@@ -57,6 +68,7 @@ const formSchema = z.object({
   nearRestaurant: z.string().optional(),
 });
 
+export type PropertyStatus = z.infer<typeof formSchema>["status"];
 export type PropertyFormValues = z.infer<typeof formSchema>;
 
 type PreviewFile = {
@@ -74,18 +86,21 @@ type ExistingImage = {
 
 interface PropertyFormProps {
   initialData?: Partial<PropertyFormValues>;
+  initialBoundary?: [number, number][];
   existingImages?: ExistingImage[];
   propertyId?: string;
   onSubmit: (
     values: PropertyFormValues & {
       fileIds: string[];
       deletedFileIds: string[];
+      boundaryPoints: [number, number][];
     },
   ) => void;
   isSubmitting?: boolean;
   buttonText?: string;
 }
 
+// ── Steps — Map inserted as step 3 after Location ─────────────────────────
 const STEPS = [
   {
     id: 0,
@@ -113,6 +128,14 @@ const STEPS = [
   },
   {
     id: 3,
+    label: "Map Pin",
+    short: "Map",
+    icon: Map,
+    accent: "bg-rose-500",
+    border: "border-rose-500",
+  },
+  {
+    id: 4,
     label: "Facilities",
     short: "Nearby",
     icon: Utensils,
@@ -120,7 +143,7 @@ const STEPS = [
     border: "border-green-500",
   },
   {
-    id: 4,
+    id: 5,
     label: "Images",
     short: "Images",
     icon: ImageIcon,
@@ -133,7 +156,8 @@ const STEP_FIELDS: Record<number, (keyof PropertyFormValues)[]> = {
   0: ["title", "price", "location", "category", "status"],
   1: ["area", "face", "roadType", "roadAccess", "negotiable"],
   2: ["municipality", "wardNo", "ringRoad"],
-  3: [
+  3: [], // map — optional, no required fields to validate
+  4: [
     "nearHospital",
     "nearAirport",
     "nearSupermarket",
@@ -143,9 +167,51 @@ const STEP_FIELDS: Record<number, (keyof PropertyFormValues)[]> = {
     "nearAtm",
     "nearRestaurant",
   ],
-  4: [],
+  5: [],
 };
 
+// ── Tile styles ────────────────────────────────────────────────────────────
+const TILE_STYLES = {
+  standard: {
+    label: "Map",
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: "&copy; OpenStreetMap",
+  },
+  satellite: {
+    label: "Satellite",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Esri",
+  },
+};
+type TileKey = keyof typeof TILE_STYLES;
+
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
+// ── Leaflet dynamic imports ────────────────────────────────────────────────
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((m) => m.MapContainer),
+  { ssr: false },
+);
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((m) => m.TileLayer),
+  { ssr: false },
+);
+const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), {
+  ssr: false,
+});
+const Popup = dynamic(() => import("react-leaflet").then((m) => m.Popup), {
+  ssr: false,
+});
+const Polygon = dynamic(() => import("react-leaflet").then((m) => m.Polygon), {
+  ssr: false,
+});
+
+// ── Field wrapper (unchanged from original) ────────────────────────────────
 function Field({
   label,
   error,
@@ -170,8 +236,591 @@ function Field({
   );
 }
 
+// ── Map click handler ──────────────────────────────────────────────────────
+function MapClickHandler({
+  onMapClick,
+  useMapEventsHook,
+}: {
+  onMapClick: (lat: number, lng: number) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useMapEventsHook: any;
+}) {
+  useMapEventsHook({
+    click(e: { latlng: { lat: number; lng: number } }) {
+      onMapClick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
+// ── Fly-to helper ──────────────────────────────────────────────────────────
+function FlyTo({
+  lat,
+  lng,
+  useMapHook,
+}: {
+  lat: number;
+  lng: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useMapHook: any;
+}) {
+  const map = useMapHook();
+  useEffect(() => {
+    map.flyTo([lat, lng], 17, { duration: 0.8 });
+  }, [lat, lng]);
+  return null;
+}
+
+// ── Nominatim location search ──────────────────────────────────────────────
+function LocationSearch({
+  onSelect,
+}: {
+  onSelect: (lat: number, lng: number, label: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const search = useCallback(async (q: string) => {
+    if (q.trim().length < 3) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&countrycodes=np`,
+        { headers: { "Accept-Language": "en" } },
+      );
+      const data: NominatimResult[] = await res.json();
+      setResults(data);
+      setOpen(data.length > 0);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setQuery(v);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => search(v), 400);
+  };
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <div className="relative">
+        <Search
+          size={13}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+        />
+        <input
+          type="text"
+          value={query}
+          onChange={handleInput}
+          onFocus={() => results.length > 0 && setOpen(true)}
+          placeholder="Search location, e.g. Thamel Kathmandu…"
+          className={cn(
+            "w-full h-10 pl-8 pr-10 rounded-xl border border-border/60 bg-background",
+            "text-sm text-foreground placeholder:text-muted-foreground/50",
+            "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all",
+          )}
+        />
+        {loading && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        )}
+      </div>
+      {open && results.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1.5 z-[2000] bg-card border border-border/60 rounded-xl shadow-2xl overflow-hidden">
+          {results.map((r) => (
+            <button
+              key={r.place_id}
+              type="button"
+              onClick={() => {
+                onSelect(parseFloat(r.lat), parseFloat(r.lon), r.display_name);
+                setQuery(r.display_name.split(",").slice(0, 2).join(", "));
+                setOpen(false);
+              }}
+              className="w-full flex items-start gap-2.5 px-3 py-2.5 hover:bg-muted/60 transition-colors text-left border-b border-border/30 last:border-0"
+            >
+              <MapPin size={12} className="text-primary shrink-0 mt-0.5" />
+              <span className="text-[12px] text-foreground line-clamp-2 leading-snug">
+                {r.display_name}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── LeafletMapPicker ───────────────────────────────────────────────────────
+interface LeafletMapPickerProps {
+  lat?: number;
+  lng?: number;
+  boundaryPoints: [number, number][];
+  onChange: (lat: number, lng: number) => void;
+  onClear: () => void;
+  onBoundaryChange: (points: [number, number][]) => void;
+}
+
+function LeafletMapPicker({
+  lat,
+  lng,
+  boundaryPoints,
+  onChange,
+  onClear,
+  onBoundaryChange,
+}: LeafletMapPickerProps) {
+  const [leafletReady, setLeafletReady] = useState(false);
+  const [leafletLib, setLeafletLib] = useState<{
+    useMapEvents: (typeof import("react-leaflet"))["useMapEvents"];
+    useMap: (typeof import("react-leaflet"))["useMap"];
+    divIcon: (typeof import("leaflet"))["divIcon"];
+  } | null>(null);
+
+  const [geoStatus, setGeoStatus] = useState<
+    "idle" | "asking" | "granted" | "denied"
+  >("idle");
+  const [geoError, setGeoError] = useState("");
+  const [tileKey, setTileKey] = useState<TileKey>("standard");
+  const [drawMode, setDrawMode] = useState(false);
+  const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null);
+
+  const centreLat = lat ?? 27.7172;
+  const centreLng = lng ?? 85.324;
+
+  useEffect(() => {
+    Promise.all([import("leaflet"), import("react-leaflet")]).then(
+      ([L, RL]) => {
+        // @ts-expect-error — internal property
+        delete L.Icon.Default.prototype._getIconUrl;
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+          iconUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+          shadowUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+        });
+        setLeafletLib({
+          useMapEvents: RL.useMapEvents,
+          useMap: RL.useMap,
+          divIcon: L.divIcon,
+        });
+        setLeafletReady(true);
+      },
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setGeoStatus("denied");
+      return;
+    }
+    setGeoStatus("asking");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGeoStatus("granted");
+        if (!lat && !lng) {
+          onChange(pos.coords.latitude, pos.coords.longitude);
+          setFlyTarget([pos.coords.latitude, pos.coords.longitude]);
+        }
+      },
+      (err) => {
+        setGeoStatus("denied");
+        setGeoError(
+          err.code === 1
+            ? "Location permission denied. Search a location or click the map."
+            : "Could not get location. Search or click the map to set the pin.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  }, []);
+
+  const handleMapClick = useCallback(
+    (clickLat: number, clickLng: number) => {
+      if (drawMode) {
+        onBoundaryChange([...boundaryPoints, [clickLat, clickLng]]);
+      } else {
+        onChange(clickLat, clickLng);
+        setFlyTarget([clickLat, clickLng]);
+      }
+    },
+    [drawMode, boundaryPoints, onChange, onBoundaryChange],
+  );
+
+  const goToCurrentLocation = () => {
+    if (!navigator.geolocation) return;
+    setGeoStatus("asking");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGeoStatus("granted");
+        onChange(pos.coords.latitude, pos.coords.longitude);
+        setFlyTarget([pos.coords.latitude, pos.coords.longitude]);
+        setGeoError("");
+      },
+      () => {
+        setGeoStatus("denied");
+        setGeoError("Could not get location.");
+      },
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  };
+
+  const removeBoundaryPoint = (idx: number) =>
+    onBoundaryChange(boundaryPoints.filter((_, i) => i !== idx));
+
+  const pinIcon = leafletLib?.divIcon({
+    html: `<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:#ef4444;border:3px solid white;transform:rotate(-45deg);box-shadow:0 2px 10px rgba(0,0,0,0.3)"></div>`,
+    className: "",
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+    popupAnchor: [0, -32],
+  });
+  const boundaryIcon = leafletLib?.divIcon({
+    html: `<div style="width:10px;height:10px;border-radius:50%;background:#ef4444;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>`,
+    className: "",
+    iconSize: [10, 10],
+    iconAnchor: [5, 5],
+  });
+
+  const hasBoundary = boundaryPoints.length >= 3;
+
+  return (
+    <div className="sm:col-span-2 flex flex-col gap-3">
+      {/* Location search box */}
+      <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+          Search location
+        </p>
+        <LocationSearch
+          onSelect={(la, ln) => {
+            onChange(la, ln);
+            setFlyTarget([la, ln]);
+          }}
+        />
+        <p className="text-[10px] text-muted-foreground/60">
+          Type a place name or click directly on the map below.
+        </p>
+      </div>
+
+      {/* Geo banners */}
+      {geoStatus === "asking" && (
+        <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-primary/5 border border-primary/20">
+          <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+          <span className="text-[12px] font-semibold text-primary">
+            Requesting your location…
+          </span>
+        </div>
+      )}
+      {geoStatus === "denied" && geoError && (
+        <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+          <MapPin size={13} className="text-amber-500 shrink-0" />
+          <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+            {geoError}
+          </span>
+        </div>
+      )}
+      {geoStatus === "granted" && !lat && (
+        <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-green-500/5 border border-green-500/20">
+          <LocateFixed size={13} className="text-green-500 shrink-0" />
+          <span className="text-[11px] font-semibold text-green-700 dark:text-green-400">
+            Location found — click the map to pin the property
+          </span>
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-0.5 bg-muted/60 border border-border/50 rounded-xl p-1">
+          {(Object.keys(TILE_STYLES) as TileKey[]).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setTileKey(k)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all",
+                tileKey === k
+                  ? "bg-background text-foreground shadow-sm border border-border/40"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {TILE_STYLES[k].label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={goToCurrentLocation}
+          disabled={geoStatus === "asking"}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/50 bg-background hover:bg-muted/60 text-[11px] font-bold transition-colors disabled:opacity-50 shadow-sm"
+        >
+          <LocateFixed size={12} className="text-primary" />
+          {geoStatus === "asking" ? "Locating…" : "My location"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setDrawMode((v) => !v)}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-bold transition-all",
+            drawMode
+              ? "bg-rose-500 text-white border-rose-500 shadow-sm"
+              : "border-border/50 bg-background hover:bg-muted/60 text-muted-foreground shadow-sm",
+          )}
+        >
+          <Pentagon size={12} /> {drawMode ? "Drawing…" : "Draw boundary"}
+        </button>
+        {boundaryPoints.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onBoundaryChange([])}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-destructive/30 bg-destructive/5 hover:bg-destructive/10 text-[11px] font-bold text-destructive transition-colors"
+          >
+            <Trash2 size={11} /> Clear boundary
+          </button>
+        )}
+        {lat && lng && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-destructive/30 bg-destructive/5 hover:bg-destructive/10 text-[11px] font-bold text-destructive transition-colors"
+          >
+            <X size={11} /> Clear pin
+          </button>
+        )}
+      </div>
+
+      {/* Map container */}
+      <div className="relative rounded-2xl overflow-hidden border border-border/60 shadow-sm">
+        <div className="absolute top-3 right-3 z-[1000]">
+          {lat && lng ? (
+            <div className="flex items-center gap-1.5 bg-green-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg">
+              <Check size={10} /> Pin set
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-sm text-white/80 text-[10px] font-bold px-3 py-1.5 rounded-full">
+              <Crosshair size={10} />{" "}
+              {drawMode ? "Click to draw" : "Click to pin"}
+            </div>
+          )}
+        </div>
+        {drawMode && (
+          <div className="absolute bottom-[72px] left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2 bg-rose-500 text-white text-[11px] font-bold px-4 py-2 rounded-full shadow-lg whitespace-nowrap">
+            <Pentagon size={12} />
+            {boundaryPoints.length === 0
+              ? "Click to start drawing boundary"
+              : `${boundaryPoints.length} point${boundaryPoints.length !== 1 ? "s" : ""} — keep clicking to add more`}
+          </div>
+        )}
+        <link
+          rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+        />
+        <div style={{ height: "380px" }}>
+          {leafletReady && leafletLib ? (
+            <MapContainer
+              center={[centreLat, centreLng]}
+              zoom={lat ? 17 : 13}
+              className="h-full w-full"
+              zoomControl
+              style={{ cursor: drawMode ? "crosshair" : "default" }}
+            >
+              <TileLayer
+                key={tileKey}
+                url={TILE_STYLES[tileKey].url}
+                attribution={TILE_STYLES[tileKey].attribution}
+              />
+              <MapClickHandler
+                onMapClick={handleMapClick}
+                useMapEventsHook={leafletLib.useMapEvents}
+              />
+              {flyTarget && (
+                <FlyTo
+                  lat={flyTarget[0]}
+                  lng={flyTarget[1]}
+                  useMapHook={leafletLib.useMap}
+                />
+              )}
+              {lat && lng && pinIcon && (
+                <Marker
+                  position={[lat, lng]}
+                  icon={pinIcon}
+                  draggable
+                  // @ts-expect-error
+                  eventHandlers={{
+                    dragend(e: {
+                      target: { getLatLng: () => { lat: number; lng: number } };
+                    }) {
+                      const p = e.target.getLatLng();
+                      onChange(p.lat, p.lng);
+                    },
+                  }}
+                >
+                  <Popup>
+                    <div className="p-1.5 min-w-[140px]">
+                      <p className="text-xs font-bold mb-1">Property pin</p>
+                      <p className="text-[10px] text-muted-foreground font-mono">
+                        {lat.toFixed(6)}, {lng.toFixed(6)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Drag to reposition
+                      </p>
+                    </div>
+                  </Popup>
+                </Marker>
+              )}
+              {boundaryPoints.length >= 2 && (
+                <Polygon
+                  positions={boundaryPoints}
+                  pathOptions={{
+                    color: "#ef4444",
+                    fillColor: "#ef4444",
+                    fillOpacity: 0.12,
+                    weight: 2,
+                    dashArray: "6 4",
+                  }}
+                />
+              )}
+              {boundaryPoints.map((pt, i) =>
+                boundaryIcon ? (
+                  <Marker
+                    key={i}
+                    position={pt}
+                    icon={boundaryIcon}
+                    eventHandlers={{
+                      click() {
+                        removeBoundaryPoint(i);
+                      },
+                    }}
+                  >
+                    <Popup>
+                      <span className="text-[10px]">
+                        Click to remove point {i + 1}
+                      </span>
+                    </Popup>
+                  </Marker>
+                ) : null,
+              )}
+            </MapContainer>
+          ) : (
+            <div className="h-full bg-muted flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                <p className="text-xs text-muted-foreground font-medium">
+                  Loading map…
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Coordinates */}
+      {lat && lng && (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-muted/40 border border-border/50 rounded-xl px-3 py-2.5">
+            <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">
+              Latitude
+            </p>
+            <p className="text-[13px] font-mono font-bold">{lat.toFixed(6)}</p>
+          </div>
+          <div className="bg-muted/40 border border-border/50 rounded-xl px-3 py-2.5">
+            <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">
+              Longitude
+            </p>
+            <p className="text-[13px] font-mono font-bold">{lng.toFixed(6)}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Boundary info */}
+      {boundaryPoints.length > 0 && (
+        <div
+          className={cn(
+            "rounded-xl px-4 py-3 border",
+            hasBoundary
+              ? "bg-rose-500/5 border-rose-500/20"
+              : "bg-amber-500/5 border-amber-500/20",
+          )}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <p
+              className={cn(
+                "text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5",
+                hasBoundary
+                  ? "text-rose-600 dark:text-rose-400"
+                  : "text-amber-600 dark:text-amber-400",
+              )}
+            >
+              <Pentagon size={11} />
+              Boundary — {boundaryPoints.length} point
+              {boundaryPoints.length !== 1 ? "s" : ""}
+              {hasBoundary && (
+                <span className="text-green-600 dark:text-green-400 ml-1">
+                  ✓ polygon closed
+                </span>
+              )}
+            </p>
+            {!hasBoundary && (
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                {Math.max(0, 3 - boundaryPoints.length)} more to close
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {boundaryPoints.map((pt, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => removeBoundaryPoint(i)}
+                className="flex items-center gap-1 bg-rose-500/10 hover:bg-destructive/15 border border-rose-500/20 hover:border-destructive/30 rounded-lg px-2 py-1 text-[10px] font-mono transition-colors group"
+              >
+                <span className="text-rose-700 dark:text-rose-400 group-hover:text-destructive">
+                  {pt[0].toFixed(4)}, {pt[1].toFixed(4)}
+                </span>
+                <X
+                  size={9}
+                  className="text-muted-foreground group-hover:text-destructive"
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
+        Search a location or click the map to drop a pin. Drag the pin to
+        fine-tune. Use{" "}
+        <strong className="text-foreground/70">Draw boundary</strong> to outline
+        the land area. This step is optional — hit{" "}
+        <strong className="text-foreground/70">Skip</strong> to continue.
+      </p>
+    </div>
+  );
+}
+
+// ── Main Form ──────────────────────────────────────────────────────────────
 export default function PropertyForm({
   initialData,
+  initialBoundary = [],
   existingImages: initialExistingImages,
   propertyId,
   onSubmit,
@@ -188,7 +837,11 @@ export default function PropertyForm({
   const [deletedFileIds, setDeletedFileIds] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  // ✅ Single ref, always mounted outside step conditionals
+  // Boundary state persists across step navigation
+  const [boundaryPoints, setBoundaryPoints] =
+    useState<[number, number][]>(initialBoundary);
+
+  // ✅ Always-mounted file input ref — never inside a conditional step block
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -215,6 +868,8 @@ export default function PropertyForm({
       municipality: initialData?.municipality || "",
       wardNo: initialData?.wardNo || "",
       ringRoad: initialData?.ringRoad || "",
+      latitude: initialData?.latitude,
+      longitude: initialData?.longitude,
       nearHospital: initialData?.nearHospital || "",
       nearAirport: initialData?.nearAirport || "",
       nearSupermarket: initialData?.nearSupermarket || "",
@@ -227,6 +882,13 @@ export default function PropertyForm({
   });
 
   const negotiable = watch("negotiable");
+  const locationValue = watch("location");
+  const categoryValue = watch("category");
+  const statusValue = watch("status");
+  const faceValue = watch("face");
+  const roadTypeValue = watch("roadType");
+  const latValue = watch("latitude");
+  const lngValue = watch("longitude");
 
   const { data: fetchedImages = [], isLoading: loadingExisting } =
     usePropertyImages(propertyId);
@@ -237,7 +899,7 @@ export default function PropertyForm({
       setExistingImages(initialExistingImages);
   }, [fetchedImages, propertyId, initialExistingImages]);
 
-  // ── Navigation ─────────────────────────────────────────────────────────────
+  // ── Navigation ─────────────────────────────────────────────────────────
   async function goNext() {
     const valid = await trigger(STEP_FIELDS[step]);
     if (!valid) return;
@@ -273,18 +935,21 @@ export default function PropertyForm({
     }, 180);
   }
 
-  // ── Image handling ─────────────────────────────────────────────────────────
+  // ── Image handling ─────────────────────────────────────────────────────
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    // Guard: uploading state is the authoritative lock; disabled input should
+    // already prevent this from firing, but defend in depth.
+    if (uploading) return;
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const newFiles = Array.from(files).map((file) => ({
       file,
       url: URL.createObjectURL(file),
-      uploadProgress: undefined, // undefined = not yet uploading
+      uploadProgress: undefined,
     }));
     setImages((prev) => [...prev, ...newFiles]);
-    // Reset so same file can be picked again
-    e.target.value = "";
+    // Reset so the same file can be picked again after removal
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function removeNewImage(index: number) {
@@ -313,7 +978,6 @@ export default function PropertyForm({
       fd.append("file", img.file);
       fd.append("isPrivate", "true");
 
-      // Mark as started
       setImages((prev) =>
         prev.map((p, idx) => (idx === i ? { ...p, uploadProgress: 10 } : p)),
       );
@@ -370,7 +1034,12 @@ export default function PropertyForm({
   async function onFormSubmit(values: PropertyFormValues) {
     try {
       const newFileIds = await uploadImages();
-      onSubmit({ ...values, fileIds: newFileIds, deletedFileIds });
+      onSubmit({
+        ...values,
+        fileIds: newFileIds,
+        deletedFileIds,
+        boundaryPoints,
+      });
     } catch (error) {
       console.error(error);
     }
@@ -380,18 +1049,31 @@ export default function PropertyForm({
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
-      {/* ✅ Always mounted — never inside a conditional */}
+      {/*
+       * ✅ File input always mounted here at the top level, never inside a conditional
+       * step block. Positioned off-screen with fixed positioning instead of sr-only
+       * or display:none — this ensures fileInputRef.current.click() reliably opens
+       * the OS file picker in all browsers (sr-only's clip-path blocks synthetic clicks).
+       */}
       <input
         ref={fileInputRef}
         type="file"
         multiple
         accept="image/*"
-        onChange={handleImageChange}
-        className="hidden"
         disabled={uploading}
+        onChange={handleImageChange}
+        style={{
+          position: "fixed",
+          top: "-9999px",
+          left: "-9999px",
+          opacity: 0,
+          pointerEvents: "none",
+        }}
+        tabIndex={-1}
+        aria-hidden="true"
       />
 
-      {/* ── STEP INDICATOR ── */}
+      {/* ── STEP INDICATOR (unchanged from original) ── */}
       <div className="relative">
         <div className="absolute top-5 left-8 right-8 h-px bg-border hidden sm:block" />
         <div
@@ -472,7 +1154,7 @@ export default function PropertyForm({
             !animating && "opacity-100 translate-x-0",
           )}
         >
-          {/* ── STEP 0: Basic Info ── */}
+          {/* ── STEP 0: Basic Info (unchanged) ── */}
           {step === 0 && (
             <>
               <Field
@@ -497,9 +1179,9 @@ export default function PropertyForm({
               <Field label="Location" error={errors.location?.message}>
                 <Select
                   onValueChange={(v) => setValue("location", v)}
-                  defaultValue={initialData?.location}
+                  value={locationValue}
                 >
-                  <SelectTrigger className="h-10 rounded-xl text-sm">
+                  <SelectTrigger className="h-10 rounded-xl text-sm w-full">
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
                   <SelectContent>
@@ -514,9 +1196,9 @@ export default function PropertyForm({
               <Field label="Property Type" error={errors.category?.message}>
                 <Select
                   onValueChange={(v) => setValue("category", v)}
-                  defaultValue={initialData?.category}
+                  value={categoryValue}
                 >
-                  <SelectTrigger className="h-10 rounded-xl text-sm">
+                  <SelectTrigger className="h-10 rounded-xl text-sm w-full">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -530,14 +1212,14 @@ export default function PropertyForm({
               </Field>
               <Field label="Status" error={errors.status?.message}>
                 <Select
-                  onValueChange={(v) => setValue("status", v)}
-                  defaultValue={initialData?.status || "available"}
+                  onValueChange={(v) => setValue("status", v as PropertyStatus)}
+                  value={statusValue}
                 >
-                  <SelectTrigger className="h-10 rounded-xl text-sm">
+                  <SelectTrigger className="h-10 rounded-xl text-sm w-full">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {["available", "booked", "sold"].map((s) => (
+                    {["available"].map((s) => (
                       <SelectItem key={s} value={s}>
                         {s.charAt(0).toUpperCase() + s.slice(1)}
                       </SelectItem>
@@ -556,22 +1238,22 @@ export default function PropertyForm({
             </>
           )}
 
-          {/* ── STEP 1: Property Details ── */}
+          {/* ── STEP 1: Property Details (unchanged) ── */}
           {step === 1 && (
             <>
-              <Field label="Area (e.g. 5 Aana)">
+              <Field label="Area (e.g. 5 Aana)" error={errors.area?.message}>
                 <Input
                   placeholder="e.g. 5 Aana"
                   className="h-10 rounded-xl text-sm"
                   {...register("area")}
                 />
               </Field>
-              <Field label="Property Face">
+              <Field label="Property Face" error={errors.face?.message}>
                 <Select
                   onValueChange={(v) => setValue("face", v)}
-                  defaultValue={initialData?.face}
+                  value={faceValue}
                 >
-                  <SelectTrigger className="h-10 rounded-xl text-sm">
+                  <SelectTrigger className="h-10 rounded-xl text-sm w-full">
                     <SelectValue placeholder="Select facing" />
                   </SelectTrigger>
                   <SelectContent>
@@ -592,12 +1274,12 @@ export default function PropertyForm({
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Road Type">
+              <Field label="Road Type" error={errors.roadType?.message}>
                 <Select
                   onValueChange={(v) => setValue("roadType", v)}
-                  defaultValue={initialData?.roadType}
+                  value={roadTypeValue}
                 >
-                  <SelectTrigger className="h-10 rounded-xl text-sm">
+                  <SelectTrigger className="h-10 rounded-xl text-sm w-full">
                     <SelectValue placeholder="Select road type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -633,7 +1315,7 @@ export default function PropertyForm({
             </>
           )}
 
-          {/* ── STEP 2: Location Details ── */}
+          {/* ── STEP 2: Location Details (unchanged) ── */}
           {step === 2 && (
             <>
               <Field label="Municipality">
@@ -660,8 +1342,26 @@ export default function PropertyForm({
             </>
           )}
 
-          {/* ── STEP 3: Nearby Facilities ── */}
-          {step === 3 &&
+          {/* ── STEP 3: Map Pin + Boundary (NEW) ── */}
+          {step === 3 && (
+            <LeafletMapPicker
+              lat={latValue && latValue !== 0 ? latValue : undefined}
+              lng={lngValue && lngValue !== 0 ? lngValue : undefined}
+              boundaryPoints={boundaryPoints}
+              onChange={(la, ln) => {
+                setValue("latitude", la, { shouldDirty: true });
+                setValue("longitude", ln, { shouldDirty: true });
+              }}
+              onClear={() => {
+                setValue("latitude", undefined, { shouldDirty: true });
+                setValue("longitude", undefined, { shouldDirty: true });
+              }}
+              onBoundaryChange={setBoundaryPoints}
+            />
+          )}
+
+          {/* ── STEP 4: Nearby Facilities (was step 3) ── */}
+          {step === 4 &&
             (
               [
                 { field: "nearHospital", label: "Hospital" },
@@ -683,8 +1383,8 @@ export default function PropertyForm({
               </Field>
             ))}
 
-          {/* ── STEP 4: Images ── */}
-          {step === 4 && (
+          {/* ── STEP 5: Images (was step 4) ── */}
+          {step === 5 && (
             <div className="sm:col-span-2">
               {loadingExisting ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -734,8 +1434,6 @@ export default function PropertyForm({
                           alt="preview"
                           className="h-32 w-full object-cover"
                         />
-
-                        {/* Uploading: progress 1–99 */}
                         {typeof img.uploadProgress === "number" &&
                           img.uploadProgress > 0 &&
                           img.uploadProgress < 100 && (
@@ -751,8 +1449,6 @@ export default function PropertyForm({
                               </span>
                             </div>
                           )}
-
-                        {/* Failed */}
                         {img.uploadProgress === -1 && (
                           <div className="absolute inset-0 bg-destructive/80 flex items-center justify-center rounded-xl">
                             <span className="text-white text-[10px] font-bold">
@@ -760,8 +1456,6 @@ export default function PropertyForm({
                             </span>
                           </div>
                         )}
-
-                        {/* Success */}
                         {img.uploadProgress === 100 && (
                           <div className="absolute top-2 left-2">
                             <CheckCircle2
@@ -770,7 +1464,6 @@ export default function PropertyForm({
                             />
                           </div>
                         )}
-
                         <button
                           type="button"
                           onClick={() => removeNewImage(i)}
@@ -782,7 +1475,7 @@ export default function PropertyForm({
                       </div>
                     ))}
 
-                    {/* Add image button */}
+                    {/* Add image button — triggers always-mounted file input */}
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -812,7 +1505,7 @@ export default function PropertyForm({
         </div>
       </div>
 
-      {/* ── NAVIGATION ── */}
+      {/* ── NAVIGATION (unchanged, but map step shows Skip when no pin set) ── */}
       <div className="flex items-center gap-3">
         {step > 0 && (
           <Button
@@ -825,7 +1518,6 @@ export default function PropertyForm({
             <ChevronLeft size={15} className="mr-1" /> Back
           </Button>
         )}
-
         {step < STEPS.length - 1 ? (
           <Button
             type="button"
@@ -833,7 +1525,9 @@ export default function PropertyForm({
             disabled={animating}
             className="flex-1 h-11 rounded-xl font-black text-[11px] uppercase tracking-widest"
           >
-            Next <ChevronRight size={15} className="ml-1" />
+            {/* Show "Skip" on the map step only when no pin has been placed */}
+            {step === 3 && !latValue ? "Skip" : "Next"}{" "}
+            <ChevronRight size={15} className="ml-1" />
           </Button>
         ) : (
           <Button

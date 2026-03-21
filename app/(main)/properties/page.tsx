@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Search,
   MapPin,
@@ -19,12 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { hasPermission, Permission, Role } from "@/lib/rbac";
-import { getSession } from "@/lib/client/auth-client";
+import { useSession } from "@/lib/client/auth-client";
 import Loading from "@/components/loading";
-import AccessDeniedPage from "@/components/access-denied";
 
 import PropertyListCard from "./_components/property-list-card";
-// import FloatingAddProperty from "./_components/floating-add-property";
+import FloatingAddProperty from "./_components/floating-add-property";
 import {
   useProperties,
   useDeleteProperty,
@@ -34,42 +33,30 @@ import {
 const ITEMS_PER_PAGE = 12;
 
 function usePermissionCheck() {
-  const router = useRouter();
-  const [permissions, setPermissions] = useState<{
-    canView: boolean | null;
-    canManage: boolean;
-  }>({ canView: null, canManage: false });
+  const { data: session, isPending } = useSession();
 
-  useEffect(() => {
-    const checkPermissions = async () => {
-      try {
-        const { data: session } = await getSession();
-        if (!session?.user) {
-          router.replace("/login");
-          return;
-        }
-        const role = session.user.role as Role;
-        setPermissions({
-          canView: hasPermission(role, Permission.VIEW_PROPERTIES),
-          canManage: hasPermission(role, Permission.MANAGE_PROPERTIES),
-        });
-      } catch (error) {
-        console.error("Permission check failed:", error);
-        setPermissions({ canView: false, canManage: false });
-      }
-    };
-    checkPermissions();
-  }, [router]);
+  // ✅ Anonymous users cannot manage
+  const isAnonymous = session?.user?.isAnonymous === true;
 
-  return permissions;
+  const canManage =
+    !isPending && !!session && !isAnonymous
+      ? hasPermission(session.user.role as Role, Permission.MANAGE_PROPERTIES)
+      : false;
+
+  return { canManage, isPending, isAnonymous };
 }
 
-function PropertiesContent({ canManage }: { canManage: boolean }) {
+function PropertiesContent({
+  canManage,
+  isAnonymous,
+}: {
+  canManage: boolean;
+  isAnonymous: boolean;
+}) {
+  const router = useRouter();
   const { data: properties = [], isLoading, error } = useProperties();
   const deleteProperty = useDeleteProperty();
   const toggleFav = useToggleFavorite();
-
-  console.log(properties);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
@@ -102,6 +89,16 @@ function PropertiesContent({ canManage }: { canManage: boolean }) {
     currentPage * ITEMS_PER_PAGE,
   );
 
+  // ✅ Anonymous → redirect to login
+  // ✅ Logged-in non-manager → also redirect (can't delete/favorite without permission)
+  const requireAuth = (action: () => void) => {
+    if (isAnonymous) {
+      router.push("/login");
+      return;
+    }
+    action();
+  };
+
   if (isLoading) return <Loading />;
 
   if (error) {
@@ -117,7 +114,8 @@ function PropertiesContent({ canManage }: { canManage: boolean }) {
 
   return (
     <div className="w-full max-w-350 mx-auto px-4 lg:px-6 py-6 space-y-6 min-h-screen">
-      {/*{canManage && <FloatingAddProperty />}*/}
+      {/* ✅ FAB only for managers */}
+      {canManage && <FloatingAddProperty />}
 
       {/* FILTER BAR */}
       <div className="flex flex-col md:flex-row gap-3 items-center bg-background p-2 rounded-xl border shadow-sm w-full">
@@ -174,10 +172,17 @@ function PropertiesContent({ canManage }: { canManage: boolean }) {
               <SelectItem value="Colony">Colony</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* ✅ Add button only for managers */}
+          {canManage && (
+            <Button onClick={() => router.push("/properties/new")}>
+              Add New Property
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* GRID: 3 COLUMNS */}
+      {/* GRID */}
       {currentData.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
           <Building2 size={48} className="mb-4 opacity-30" />
@@ -193,9 +198,15 @@ function PropertiesContent({ canManage }: { canManage: boolean }) {
               canManage={canManage}
               isFavorite={favoriteIds.includes(property._id)}
               onToggleFavorite={(id, isFav) =>
-                toggleFav.mutate({ propertyId: id, isFav })
+                // ✅ Anonymous → login, logged-in → toggle
+                requireAuth(() =>
+                  toggleFav.mutate({ propertyId: id, isFav: !isFav }),
+                )
               }
-              onDelete={(id: string) => deleteProperty.mutate(id)}
+              onDelete={(id: string) =>
+                // ✅ Anonymous → login, logged-in manager → delete
+                requireAuth(() => deleteProperty.mutate(id))
+              }
             />
           ))}
         </div>
@@ -240,10 +251,10 @@ function PropertiesContent({ canManage }: { canManage: boolean }) {
 }
 
 export default function PropertiesPage() {
-  const { canView, canManage } = usePermissionCheck();
+  const { canManage, isPending, isAnonymous } = usePermissionCheck();
 
-  if (canView === null) return <Loading />;
-  if (!canView) return <AccessDeniedPage />;
+  if (isPending) return <Loading />;
 
-  return <PropertiesContent canManage={canManage} />;
+  // ✅ Everyone (anonymous + logged-in) can view the list
+  return <PropertiesContent canManage={canManage} isAnonymous={isAnonymous} />;
 }

@@ -2,7 +2,7 @@
 
 import React, { useState, use } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   MapPin,
@@ -18,7 +18,6 @@ import {
   Navigation,
   Layers,
   Map as MapIcon,
-  Banknote,
   Calendar,
   Info,
   Hospital,
@@ -33,10 +32,12 @@ import {
   FileText,
   ArrowLeft,
   Pencil,
+  Phone,
+  Mail,
+  ExternalLink,
+  Maximize2,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/client/auth-client";
 import { hasPermission, Permission, Role } from "@/lib/rbac";
@@ -47,6 +48,11 @@ import {
   useToggleFavorite,
   useDeleteProperty,
 } from "@/lib/client/queries/properties.queries";
+import {
+  usePropertySubscription,
+  useConsumeContactCredit,
+} from "@/lib/client/queries/subscriptions.queries";
+import EsewaPaymentButton from "../_components/esewa-button";
 
 export default function PropertyPage({
   params,
@@ -55,8 +61,14 @@ export default function PropertyPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from");
 
-  const { data: session } = useSession();
+  const handleBack = () => {
+    router.push(from === "favorites" ? "/favorites" : "/properties");
+  };
+
+  const { data: session, isPending: sessionPending } = useSession();
   const { data: property, isLoading, error } = useProperty(id);
   const { data: fetchedImages, isLoading: loadingImages } =
     usePropertyImages(id);
@@ -68,18 +80,51 @@ export default function PropertyPage({
   const canManage =
     hasPermission(role, Permission.MANAGE_PROPERTIES) &&
     (role === Role.ADMIN || isOwner);
+  const isAnonymous = session?.user?.isAnonymous === true;
+  const isGuest = sessionPending || !session || isAnonymous;
+
+  const { data: subscriptionData, isLoading: subscriptionLoading } =
+    usePropertySubscription(id, !isGuest);
+  const consumeContactCredit = useConsumeContactCredit(id);
+
+  const hasContactAccess = subscriptionData?.hasAccess ?? false;
+  const alreadyUnlocked = subscriptionData?.alreadyUnlocked ?? false;
+  const totalCredits = subscriptionData?.totalCredits ?? 0;
+
+  const requireAuth = (action: () => void) => {
+    if (isGuest) {
+      router.push(`/login?redirectTo=/properties/${id}`);
+      return;
+    }
+    action();
+  };
+
+  const handleContactClick = async () => {
+    requireAuth(async () => {
+      try {
+        const data = await consumeContactCredit.mutateAsync();
+        if (!data?.hasAccess) return;
+        router.push(`/properties/${id}/contact`);
+      } catch (e) {
+        console.error(e);
+      }
+    });
+  };
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [thumbsExpanded, setThumbsExpanded] = useState(false);
 
-  if (isLoading) {
+  if (isLoading || !property) {
     return (
-      <div className="w-full max-w-[95vw] mx-auto p-4 lg:p-6 space-y-8">
-        <div className="h-[620px] rounded-[2.5rem] bg-muted animate-pulse" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="space-y-4 w-full max-w-6xl px-6">
+          <div className="h-[70vh] w-full rounded-3xl bg-muted animate-pulse" />
+        </div>
       </div>
     );
   }
 
-  if (error || !property) {
+  if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-destructive font-semibold">
@@ -89,84 +134,46 @@ export default function PropertyPage({
     );
   }
 
-  const {
-    title,
-    location,
-    price,
-    status,
-    description,
-    isFavorite,
-    category,
-    area,
-    municipality,
-    wardNo,
-  } = property;
+  const { title, location, price, status, description, isFavorite, category } =
+    property;
 
-  // ── IMAGES ──
   const FALLBACK_IMAGES = [
     "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
     "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9",
-    "https://images.unsplash.com/photo-1600607687940-4e5a994e5773",
-    "https://images.unsplash.com/photo-1600566753190-17f0bb2a6c3e",
     "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0",
     "https://images.unsplash.com/photo-1600573472591-ee6b68d14c68",
     "https://images.unsplash.com/photo-1560518883-ce09059eeffa",
   ];
 
   const rawImages =
-    fetchedImages && fetchedImages.length > 0
-      ? fetchedImages.map((img: any) => img.url)
+    fetchedImages?.length > 0
+      ? fetchedImages.map((img: { url: string }) => img.url)
       : FALLBACK_IMAGES;
-
   const propertyImages = rawImages.slice(0, 7);
-  const isLocked = currentIndex >= 5;
-
+  const isLocked = currentIndex >= 5 && !alreadyUnlocked;
   const nextImage = () =>
-    setCurrentIndex((prev) => (prev + 1) % propertyImages.length);
+    setCurrentIndex((p) => (p + 1) % propertyImages.length);
   const prevImage = () =>
-    setCurrentIndex((prev) =>
-      prev === 0 ? propertyImages.length - 1 : prev - 1,
-    );
+    setCurrentIndex((p) => (p === 0 ? propertyImages.length - 1 : p - 1));
 
-  // ── OVERVIEW DATA from real property ──
-  const overviewData = [
+  const overviewItems = [
+    { label: "Type", value: category || "N/A", icon: Building2 },
+    { label: "Purpose", value: status || "Sale", icon: CheckCircle2 },
+    { label: "Face", value: property.face || "N/A", icon: Navigation },
     {
-      label: "Property Type",
-      value: category || "N/A",
-      icon: <Building2 size={16} />,
+      label: "Area",
+      value: property.area ? `${property.area} Aana` : "N/A",
+      icon: Ruler,
     },
-    {
-      label: "Purpose",
-      value: status || "Sale",
-      icon: <CheckCircle2 size={16} />,
-    },
-    {
-      label: "Property Face",
-      value: property.face || "N/A",
-      icon: <Navigation size={16} />,
-    },
-    {
-      label: "Property Area",
-      value: property.area || "N/A",
-      icon: <Ruler size={16} />,
-    },
-    {
-      label: "Road Type",
-      value: property.roadType || "N/A",
-      icon: <Layers size={16} />,
-    },
-    {
-      label: "Road Access",
-      value: property.roadAccess || "N/A",
-      icon: <MapPin size={16} />,
-    },
+    { label: "Road Type", value: property.roadType || "N/A", icon: Layers },
+    { label: "Road Access", value: property.roadAccess || "N/A", icon: MapPin },
     {
       label: "Negotiable",
       value: property.negotiable ? "Yes" : "No",
-      icon: <Wallet size={16} />,
+      icon: Wallet,
     },
     {
-      label: "Date Posted",
+      label: "Posted",
       value: property.createdAt
         ? new Date(property.createdAt).toLocaleDateString("en-US", {
             year: "numeric",
@@ -174,175 +181,63 @@ export default function PropertyPage({
             day: "numeric",
           })
         : "N/A",
-      icon: <Calendar size={16} />,
+      icon: Calendar,
     },
     {
       label: "Municipality",
       value: property.municipality || "N/A",
-      icon: <Building2 size={16} />,
+      icon: Building2,
     },
-    {
-      label: "Ward No.",
-      value: property.wardNo || "N/A",
-      icon: <Info size={16} />,
-    },
-    {
-      label: "Ring Road",
-      value: property.ringRoad || "N/A",
-      icon: <Layers size={16} />,
-    },
+    { label: "Ward No.", value: property.wardNo || "N/A", icon: Info },
+    { label: "Ring Road", value: property.ringRoad || "N/A", icon: Layers },
   ];
 
-  const facilitiesData = [
+  const facilityItems = [
     {
       label: "Hospital",
       value: property.nearHospital || "N/A",
-      icon: <Hospital size={16} />,
+      icon: Hospital,
     },
-    {
-      label: "Airport",
-      value: property.nearAirport || "N/A",
-      icon: <Plane size={16} />,
-    },
+    { label: "Airport", value: property.nearAirport || "N/A", icon: Plane },
     {
       label: "Supermarket",
       value: property.nearSupermarket || "N/A",
-      icon: <ShoppingCart size={16} />,
+      icon: ShoppingCart,
     },
-    {
-      label: "School",
-      value: property.nearSchool || "N/A",
-      icon: <School size={16} />,
-    },
-    {
-      label: "Gym",
-      value: property.nearGym || "N/A",
-      icon: <Dumbbell size={16} />,
-    },
-    {
-      label: "Public Transport",
-      value: property.nearTransport || "N/A",
-      icon: <Bus size={16} />,
-    },
-    {
-      label: "ATM",
-      value: property.nearAtm || "N/A",
-      icon: <Wallet size={16} />,
-    },
+    { label: "School", value: property.nearSchool || "N/A", icon: School },
+    { label: "Gym", value: property.nearGym || "N/A", icon: Dumbbell },
+    { label: "Transport", value: property.nearTransport || "N/A", icon: Bus },
+    { label: "ATM", value: property.nearAtm || "N/A", icon: Wallet },
     {
       label: "Restaurant",
       value: property.nearRestaurant || "N/A",
-      icon: <Utensils size={16} />,
+      icon: Utensils,
     },
   ];
 
   return (
-    <div className="w-full max-w-[95vw] mx-auto p-4 lg:p-6 space-y-8 animate-in fade-in duration-700">
-      {/* BACK BUTTON */}
-      <button
-        onClick={() => router.push("/properties")}
-        className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm font-semibold"
-      >
-        <ArrowLeft size={16} /> Back to Properties
-      </button>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* ── TOP NAV BAR ─────────────────────────────── */}
+      <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
+        <div className="max-w-350 mx-auto px-4 md:px-8 h-14 flex items-center justify-between">
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft size={16} />
+            <span>Back</span>
+          </button>
 
-      {/* MAIN PROPERTY CARD */}
-      <Card className="overflow-hidden border-border bg-card shadow-2xl rounded-[2.5rem] lg:h-[620px] max-h-[90vh] flex flex-col lg:flex-row">
-        {/* LEFT: Gallery */}
-        <div className="relative w-full lg:w-[50%] bg-muted/10 flex flex-col border-r p-4 lg:p-8">
-          {/* Main Image */}
-          <div className="relative flex-1 overflow-hidden rounded-[2rem] group border border-border/50 shadow-inner bg-black">
-            {loadingImages ? (
-              <div className="absolute inset-0 bg-muted animate-pulse" />
-            ) : (
-              <Image
-                src={propertyImages[currentIndex]}
-                alt={title || "Property Image"}
-                fill
-                priority
-                className={cn(
-                  "object-cover transition-all duration-700",
-                  isLocked
-                    ? "blur-2xl scale-110 opacity-50"
-                    : "group-hover:scale-105",
-                )}
-              />
-            )}
-
-            {/* Premium Lock Overlay */}
-            {isLocked && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/10 backdrop-blur-sm">
-                <div className="bg-card/95 p-6 rounded-[2rem] shadow-2xl flex flex-col items-center text-center border border-border max-w-[280px]">
-                  <Crown size={28} className="text-amber-500 mb-3" />
-                  <h3 className="text-lg font-bold mb-1">Premium View</h3>
-                  <p className="text-[10px] text-muted-foreground mb-4 uppercase tracking-wider">
-                    Subscriber Exclusive
-                  </p>
-                  <Button size="sm" className="rounded-xl font-bold px-8">
-                    Unlock
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Arrows */}
-            <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex justify-between z-30 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-8 w-8 rounded-full bg-background/60 backdrop-blur-md"
-                onClick={prevImage}
-              >
-                <ChevronLeft size={18} />
-              </Button>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-8 w-8 rounded-full bg-background/60 backdrop-blur-md"
-                onClick={nextImage}
-              >
-                <ChevronRight size={18} />
-              </Button>
-            </div>
-
-            {/* Fav + Share */}
-            <div className="absolute top-4 left-4 flex gap-2 z-30">
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-9 w-9 rounded-xl shadow-xl"
-                onClick={() =>
-                  toggleFav.mutate({ propertyId: id, isFav: !!isFavorite })
-                }
-              >
-                <Heart
-                  size={18}
-                  className={cn(
-                    isFavorite
-                      ? "text-destructive fill-current"
-                      : "text-muted-foreground",
-                  )}
-                />
-              </Button>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-9 w-9 rounded-xl shadow-xl"
-              >
-                <Share2 size={18} className="text-muted-foreground" />
-              </Button>
-            </div>
-
-            {/* Manage controls */}
+          <div className="flex items-center gap-2">
             {canManage && (
-              <div className="absolute top-4 right-4 flex gap-2 z-30">
+              <>
                 <Link href={`/properties/${id}/edit`}>
                   <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-9 w-9 rounded-xl shadow-xl"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs"
                   >
-                    <Pencil size={16} />
+                    <Pencil size={13} /> Edit
                   </Button>
                 </Link>
                 <DeletePropertyDialog
@@ -352,216 +247,408 @@ export default function PropertyPage({
                     router.push("/properties");
                   }}
                   isDeleting={deleteProperty.isPending}
-                />
-              </div>
+                />{" "}
+              </>
             )}
-          </div>
-
-          {/* Thumbnails */}
-          <div className="mt-4 flex justify-center gap-2 overflow-x-auto py-2">
-            {propertyImages.map((img, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentIndex(idx)}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-xl"
+              onClick={() =>
+                requireAuth(() =>
+                  toggleFav.mutate({ propertyId: id, isFav: !!isFavorite }),
+                )
+              }
+            >
+              <Heart
+                size={16}
                 className={cn(
-                  "relative flex-shrink-0 w-12 h-12 lg:w-14 lg:h-14 rounded-xl overflow-hidden border-2 transition-all",
-                  currentIndex === idx
-                    ? "border-primary scale-110 shadow-md"
-                    : "border-transparent opacity-60",
+                  isFavorite && !isGuest
+                    ? "text-destructive fill-current"
+                    : "text-muted-foreground",
                 )}
-              >
-                <Image
-                  src={img}
-                  alt="thumb"
-                  fill
-                  className={cn(
-                    "object-cover",
-                    idx >= 5 && "blur-[2px] grayscale",
-                  )}
-                />
-                {idx >= 5 && (
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <Lock size={10} className="text-amber-400" />
-                  </div>
-                )}
-              </button>
-            ))}
+              />{" "}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl">
+              <Share2 size={16} className="text-muted-foreground" />
+            </Button>
           </div>
         </div>
+      </div>
 
-        {/* RIGHT: Info */}
-        <div className="w-full lg:w-[50%] bg-card p-6 lg:p-10 flex flex-col overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex flex-col h-full">
-            {/* Badges */}
-            <div className="flex items-center gap-2 mb-4">
-              <Badge className="bg-primary px-2 py-0.5 text-[9px] font-black uppercase">
-                {status || "For Sale"}
-              </Badge>
-              <Badge
-                variant="outline"
-                className="flex items-center gap-1 bg-accent text-primary px-2 py-0.5 text-[9px] font-bold"
-              >
-                <CheckCircle2 size={10} /> Verified
-              </Badge>
+      <div className="max-w-350 mx-auto px-4 md:px-8 py-6 md:py-10">
+        {/* ── HERO GALLERY + INFO SPLIT ───────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 xl:gap-10 items-start">
+          {/* LEFT: Gallery */}
+          <div className="flex flex-col gap-3">
+            {/* Main Image */}
+            <div className="relative aspect-4/3 md:aspect-16/10 rounded-2xl overflow-hidden bg-muted group">
+              {loadingImages ? (
+                <div className="absolute inset-0 bg-muted animate-pulse" />
+              ) : (
+                <Image
+                  src={propertyImages[currentIndex]}
+                  alt={title || "Property"}
+                  fill
+                  priority
+                  className={cn(
+                    "object-cover transition-all duration-700",
+                    isLocked
+                      ? "blur-2xl scale-110 opacity-40"
+                      : "group-hover:scale-[1.02]",
+                  )}
+                />
+              )}
+
+              {/* Gradient overlay bottom */}
+              {!isLocked && (
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/60 to-transparent pointer-events-none" />
+              )}
+
+              {/* Image counter */}
+              {!isLocked && (
+                <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full">
+                  {currentIndex + 1} / {propertyImages.length}
+                </div>
+              )}
+
+              {/* Nav arrows */}
+              {!isLocked && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </>
+              )}
+
+              {/* Status badge top-left */}
+              <div className="absolute top-4 left-4 flex gap-2 pointer-events-none">
+                <span className="bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                  {status || "For Sale"}
+                </span>
+                <span className="bg-background/80 backdrop-blur-md text-foreground text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full flex items-center gap-1">
+                  <CheckCircle2 size={9} className="text-green-500" /> Verified
+                </span>
+              </div>
+
+              {/* Locked overlay */}
+              {isLocked && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center">
+                  <div className="bg-card/95 backdrop-blur-xl p-8 rounded-2xl shadow-2xl flex flex-col items-center text-center border border-border max-w-[300px]">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-4">
+                      <Crown size={24} className="text-amber-500" />
+                    </div>
+                    <h3 className="text-base font-bold mb-1">
+                      Premium Content
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground mb-5">
+                      Unlock remaining photos & contact details
+                    </p>
+                    {totalCredits > 0 ? (
+                      <Button
+                        size="sm"
+                        disabled={
+                          sessionPending ||
+                          subscriptionLoading ||
+                          consumeContactCredit.isPending
+                        }
+                        className="w-full rounded-xl font-bold text-xs h-10"
+                        onClick={handleContactClick}
+                      >
+                        {consumeContactCredit.isPending
+                          ? "Unlocking..."
+                          : "Unlock Now"}
+                      </Button>
+                    ) : (
+                      <EsewaPaymentButton propertyId={id} />
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Title & Price */}
-            <section className="p-5 bg-muted/30 rounded-[1.5rem] border border-border/50 mb-6">
-              <h1 className="text-xl lg:text-2xl font-bold leading-tight mb-2">
-                {title || "Property"}
-              </h1>
-              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-4">
-                <MapPin size={14} className="text-destructive" />{" "}
-                {location || "Location N/A"}
+            {/* Thumbnail Strip */}
+            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {propertyImages.map((img: string, idx: number) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentIndex(idx)}
+                  className={cn(
+                    "relative shrink-0 w-18 h-13.5 md:w-22 `md:h-16.5 rounded-xl overflow-hidden border-2 transition-all duration-200",
+                    currentIndex === idx
+                      ? "border-primary ring-2 ring-primary/30 scale-[1.04]"
+                      : "border-border/50 hover:border-border",
+                  )}
+                >
+                  <Image
+                    src={img}
+                    alt={`View ${idx + 1}`}
+                    fill
+                    className={cn(
+                      "object-cover",
+                      idx >= 5 &&
+                        !alreadyUnlocked &&
+                        "blur-sm grayscale opacity-60",
+                    )}
+                  />
+                  {idx >= 5 && !alreadyUnlocked && (
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                      <Lock size={10} className="text-amber-400" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* RIGHT: Property Info Panel */}
+          <div className="flex flex-col gap-5">
+            {/* Title & Location */}
+            <div>
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h1 className="text-2xl md:text-3xl font-bold leading-tight tracking-tight">
+                  {title || "Property"}
+                </h1>
               </div>
+              <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
+                <MapPin size={13} className="text-destructive shrink-0" />
+                <span className="font-medium">
+                  {location || "Location N/A"}
+                </span>
+              </div>
+            </div>
+
+            {/* Price Block */}
+            <div className="bg-muted/40 rounded-2xl px-5 py-4 border border-border/60">
+              <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-widest mb-1">
+                Asking Price
+              </p>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-primary tracking-tight">
-                  NPR.{" "}
+                <span className="text-3xl font-black text-primary tracking-tight">
+                  NPR{" "}
                   {price ? new Intl.NumberFormat("en-IN").format(price) : "N/A"}
                 </span>
-                {property.negotiable && (
-                  <span className="text-[9px] font-bold text-primary/60 uppercase tracking-widest">
-                    Negotiable
-                  </span>
-                )}
               </div>
-            </section>
-
-            {/* Specs */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <div className="flex items-center gap-3 p-3 bg-muted/20 rounded-xl border border-border/50">
-                <MapIcon size={16} className="text-primary" />
-                <span className="text-xs font-bold">{category || "N/A"}</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-muted/20 rounded-xl border border-border/50">
-                <Ruler size={16} className="text-primary" />
-                <span className="text-xs font-bold">
-                  {property.area || "N/A"}
+              {property.negotiable && (
+                <span className="inline-block mt-2 text-[10px] font-bold text-green-600 bg-green-500/10 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  Negotiable
                 </span>
-              </div>
+              )}
             </div>
 
-            {/* Premium Features */}
-            <div className="space-y-3 mb-8">
+            {/* Quick Stats */}
+            <div className="grid grid-cols-3 gap-3">
               {[
+                { icon: MapIcon, label: "Type", value: category || "N/A" },
                 {
-                  icon: <Video size={18} className="text-primary" />,
-                  label: "Virtual Tour",
+                  icon: Ruler,
+                  label: "Area",
+                  value: property.area ? `${property.area} Ana` : "N/A",
                 },
                 {
-                  icon: <Crown size={18} className="text-primary" />,
-                  label: "Premium Map",
+                  icon: Navigation,
+                  label: "Face",
+                  value: property.face || "N/A",
                 },
-              ].map(({ icon, label }) => (
+              ].map(({ icon: Icon, label, value }) => (
                 <div
                   key={label}
-                  className="p-3 border-2 border-dashed border-primary/20 bg-primary/5 rounded-xl flex items-center justify-between cursor-pointer"
+                  className="bg-muted/30 rounded-xl p-3 border border-border/50 text-center"
                 >
-                  <div className="flex items-center gap-3">
-                    {icon}
-                    <div>
-                      <h4 className="font-bold text-[11px]">{label}</h4>
-                      <p className="text-[9px] text-muted-foreground font-bold uppercase">
-                        Locked
-                      </p>
-                    </div>
-                  </div>
-                  <Lock size={12} className="text-primary/40" />
+                  <Icon size={16} className="text-primary mx-auto mb-1.5" />
+                  <p className="text-[10px] text-muted-foreground font-medium mb-0.5">
+                    {label}
+                  </p>
+                  <p className="text-[12px] font-bold truncate">{value}</p>
                 </div>
               ))}
             </div>
 
-            {/* CTA */}
-            <div className="mt-auto flex gap-4 pt-4">
+            {/* Premium Features (logged-in non-anonymous only) */}
+            {!isAnonymous && (
+              <div className="space-y-2">
+                {[
+                  {
+                    icon: Video,
+                    label: "Virtual Tour",
+                    desc: "360° immersive walkthrough",
+                  },
+                  {
+                    icon: Crown,
+                    label: "Premium Map",
+                    desc: "Exact pin & street view",
+                  },
+                ].map(({ icon: Icon, label, desc }) => (
+                  <div
+                    key={label}
+                    className="flex items-center gap-3 p-3.5 rounded-xl border border-dashed border-border hover:border-primary/40 bg-muted/20 hover:bg-primary/5 transition-all cursor-pointer group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Icon size={15} className="text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold">{label}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {desc}
+                      </p>
+                    </div>
+                    <Lock
+                      size={11}
+                      className="text-muted-foreground/50 group-hover:text-primary/50 transition-colors"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col gap-3 pt-1">
               <Button
                 size="lg"
-                className="flex-1 rounded-2xl font-bold uppercase text-[10px] tracking-widest h-12 shadow-lg"
+                disabled={sessionPending}
+                className="w-full h-12 rounded-xl font-bold text-sm tracking-wide shadow-md"
                 onClick={() =>
-                  router.push(`/appointments/new?propertyId=${id}`)
+                  requireAuth(() =>
+                    router.push(`/appointments/new?propertyId=${id}`),
+                  )
                 }
               >
-                Book Now
+                {sessionPending ? "Loading..." : "Book a Visit"}
               </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="flex-1 rounded-2xl font-bold uppercase text-[10px] tracking-widest h-12 border-2"
-              >
-                Contact
-              </Button>
+
+              {hasContactAccess || totalCredits > 0 ? (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  disabled={
+                    sessionPending ||
+                    subscriptionLoading ||
+                    consumeContactCredit.isPending
+                  }
+                  className="w-full h-12 rounded-xl font-bold text-sm border-2"
+                  onClick={handleContactClick}
+                >
+                  {sessionPending || subscriptionLoading
+                    ? "Loading..."
+                    : consumeContactCredit.isPending
+                      ? "Opening..."
+                      : "Contact Seller"}
+                </Button>
+              ) : (
+                <EsewaPaymentButton propertyId={id} />
+              )}
+
+              {!sessionPending && isAnonymous && (
+                <p className="text-center text-[11px] text-muted-foreground">
+                  <Link
+                    href={`/login?redirectTo=/properties/${id}`}
+                    className="text-primary font-semibold underline underline-offset-2"
+                  >
+                    Sign in
+                  </Link>{" "}
+                  to book, contact, or save this property
+                </p>
+              )}
             </div>
           </div>
         </div>
-      </Card>
 
-      {/* OVERVIEW & FACILITIES */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <DataCard
-          title="Property Overview"
-          data={overviewData}
-          accentColor="bg-primary"
-        />
-        <DataCard
-          title="Nearby Facilities"
-          data={facilitiesData}
-          accentColor="bg-green-500"
-        />
+        {/* ── BOTTOM SECTIONS (for authenticated non-guest users) ── */}
+        {!isAnonymous && (
+          <div className="mt-12 space-y-8">
+            {/* Description */}
+            {description && (
+              <section>
+                <SectionHeader icon={FileText} title="About this Property" />
+                <div className="mt-4 bg-muted/20 rounded-2xl p-6 border border-border/50">
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {description}
+                  </p>
+                </div>
+              </section>
+            )}
+
+            {/* Overview + Facilities side by side */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <section>
+                <SectionHeader icon={Building2} title="Property Overview" />
+                <div className="mt-4 rounded-2xl border border-border/50 overflow-hidden">
+                  {overviewItems.map(({ label, value, icon: Icon }, i) => (
+                    <div
+                      key={label}
+                      className={cn(
+                        "flex items-center justify-between px-5 py-3.5 text-sm",
+                        i % 2 === 0 ? "bg-muted/20" : "bg-transparent",
+                        i < overviewItems.length - 1 &&
+                          "border-b border-border/30",
+                      )}
+                    >
+                      <div className="flex items-center gap-3 text-muted-foreground">
+                        <Icon size={14} />
+                        <span className="text-[12px] font-medium">{label}</span>
+                      </div>
+                      <span className="text-[12px] font-semibold text-foreground">
+                        {value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section>
+                <SectionHeader icon={MapPin} title="Nearby Facilities" />
+                <div className="mt-4 rounded-2xl border border-border/50 overflow-hidden">
+                  {facilityItems.map(({ label, value, icon: Icon }, i) => (
+                    <div
+                      key={label}
+                      className={cn(
+                        "flex items-center justify-between px-5 py-3.5 text-sm",
+                        i % 2 === 0 ? "bg-muted/20" : "bg-transparent",
+                        i < facilityItems.length - 1 &&
+                          "border-b border-border/30",
+                      )}
+                    >
+                      <div className="flex items-center gap-3 text-muted-foreground">
+                        <Icon size={14} />
+                        <span className="text-[12px] font-medium">{label}</span>
+                      </div>
+                      <span className="text-[12px] font-semibold text-foreground">
+                        {value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* DESCRIPTION */}
-      <Card className="rounded-[2.5rem] shadow-xl border-border overflow-hidden bg-card">
-        <CardHeader className="px-8 py-5 border-b bg-muted/30">
-          <CardTitle className="text-md font-bold flex items-center gap-3">
-            <div className="w-1.5 h-5 rounded-full bg-amber-500" />
-            <FileText size={18} className="text-muted-foreground" />
-            Detailed Description
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-8">
-          {description ? (
-            <p className="text-[13px] leading-relaxed text-muted-foreground font-medium">
-              {description}
-            </p>
-          ) : (
-            <p className="text-[13px] text-muted-foreground italic">
-              No description provided.
-            </p>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
 
-function DataCard({
+function SectionHeader({
+  icon: Icon,
   title,
-  data,
-  accentColor,
 }: {
+  icon: React.ElementType;
   title: string;
-  data: any[];
-  accentColor: string;
 }) {
   return (
-    <Card className="rounded-[2.5rem] shadow-xl border-border overflow-hidden bg-card">
-      <CardHeader className="px-8 py-5 border-b bg-muted/30">
-        <CardTitle className="text-md font-bold flex items-center gap-3">
-          <div className={cn("w-1.5 h-5 rounded-full", accentColor)} /> {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-8 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
-        {data.map((item, i) => (
-          <div key={i} className="flex justify-between items-center">
-            <div className="flex items-center gap-3 text-muted-foreground">
-              <div className="p-1 rounded-lg bg-muted">{item.icon}</div>
-              <span className="text-[12px] font-semibold">{item.label}:</span>
-            </div>
-            <span className="text-[12px] font-bold text-foreground">
-              {item.value}
-            </span>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
+    <div className="flex items-center gap-3">
+      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+        <Icon size={15} className="text-primary" />
+      </div>
+      <h2 className="text-base font-bold">{title}</h2>
+    </div>
   );
 }

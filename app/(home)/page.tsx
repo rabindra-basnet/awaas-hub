@@ -3,46 +3,13 @@ import { useState, useEffect, useRef } from "react";
 import { Shield, CheckCircle, Home } from "lucide-react";
 import HeroSection from "./__components/hero-section";
 import FeaturesSection from "./__components/features-section";
-import FeaturedProperties from "./__components/featured-properties";
 import CallToAction from "./__components/call-to-action";
 import Header from "@/components/header";
 import Footer from "./__components/footer";
-
-const propertiesData = [
-  {
-    id: 1,
-    title: "Modern Apartment in Jhamsikhel",
-    location: "Jhamsikhel, Lalitpur",
-    price: "NPR 35,000/month",
-    type: "Rent",
-    beds: 2,
-    baths: 1,
-    image: "/modern-apartment.png",
-    verified: true,
-  },
-  {
-    id: 2,
-    title: "Commercial Space in Baneshwor",
-    location: "New Baneshwor, Kathmandu",
-    price: "NPR 1,20,000/month",
-    type: "Rent",
-    beds: 0,
-    baths: 2,
-    image: "/commercial_space_in_baneshwor.png",
-    verified: true,
-  },
-  {
-    id: 3,
-    title: "Luxury House on Sale",
-    location: "Budhanilkantha, Kathmandu",
-    price: "NPR 4.5 Cr",
-    type: "Sale",
-    beds: 5,
-    baths: 4,
-    image: "/luxury-house.png",
-    verified: true,
-  },
-];
+import FeaturedProperties, {
+  FeaturedProperty,
+} from "./__components/featured-properties";
+import { useQuery } from "@tanstack/react-query";
 
 const featuresData = [
   {
@@ -67,6 +34,21 @@ const featuresData = [
 const HomePage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: featuredProperties = [] } = useQuery<FeaturedProperty[]>({
+    queryKey: ["featured-properties"],
+    queryFn: async () => {
+      const response = await fetch("/api/properties/featured", {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch featured properties");
+      }
+
+      return response.json();
+    },
+  });
 
   // Refs for animations
   const heroHeadlineRef = useRef<HTMLDivElement>(null!);
@@ -100,7 +82,7 @@ const HomePage = () => {
         featureSectionRef={featureSectionRef}
       />
 
-      <FeaturedProperties properties={propertiesData} />
+      <FeaturedProperties properties={featuredProperties} />
 
       <CallToAction />
 

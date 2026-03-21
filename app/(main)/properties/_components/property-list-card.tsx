@@ -14,6 +14,7 @@ import {
   Heart,
   ChevronLeft,
   ChevronRight,
+  Delete,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import DeletePropertyDialog from "./delete-property";
+import Link from "next/link";
 
 interface PropertyListCardProps {
   property: any;
@@ -97,7 +99,11 @@ export default function PropertyListCard({
       {/* ── CAROUSEL ── */}
       <div
         className="relative aspect-16/10 cursor-pointer overflow-hidden rounded-2xl"
-        onClick={() => router.push(`/properties/${property._id}`)}
+        onClick={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest("button, a, [role='menuitem']")) return;
+          router.push(`/properties/${property._id}`);
+        }}
       >
         {/* SLIDES */}
         <div
@@ -165,13 +171,14 @@ export default function PropertyListCard({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40 rounded-xl">
                   <DropdownMenuItem
-                    onClick={() =>
-                      router.push(`/properties/${property._id}/edit`)
-                    }
-                    className="cursor-pointer gap-2 text-xs font-bold"
+                    asChild
+                    className="cursor-pointer gap-2 font-bold"
                   >
-                    <Pencil size={14} /> EDIT
+                    <Link href={`/properties/${property._id}/edit`}>
+                      <Pencil size={14} /> Edit
+                    </Link>
                   </DropdownMenuItem>
+
                   <DropdownMenuSeparator />
                   <div className="p-1">
                     <DeletePropertyDialog

@@ -79,7 +79,7 @@ import { getSession } from "@/lib/client/auth-client";
 import { useEffect, useState } from "react";
 import AccessDeniedPage from "@/components/access-denied";
 import { use } from "react";
-import PropertyForm from "../../_components/property-formss";
+import PropertyForm from "../../_components/property-formssss";
 import {
   useProperty,
   useUpdateProperty,

@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "@/lib/client/auth-client";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+
+import { useSession } from "@/lib/client/auth-client";
 import { Role, Permission, hasAnyPermission } from "@/lib/rbac";
+import FavouriteDetailsCard from "./_components/favourite-details-card";
 
 interface Property {
   _id: string;
@@ -18,150 +22,174 @@ interface Property {
   images: string[];
 }
 
-export default function BuyerFavoritesPage() {
+const ITEMS_PER_PAGE = 6;
+
+async function fetchFavorites(): Promise<Property[]> {
+  const res = await fetch("/api/favorites", { method: "GET" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export default function FavoritesPage() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
-  const [favorites, setFavorites] = useState<Property[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasAccess, setHasAccess] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const isAnonymous = session?.user?.isAnonymous === true;
 
   useEffect(() => {
-    if (!isPending && !session) {
+    if (!isPending && (!session || isAnonymous)) {
       router.push("/login");
     }
-  }, [session, isPending, router]);
+  }, [session, isPending, isAnonymous, router]);
+
+  const {
+    data: favorites = [],
+    isLoading,
+    refetch,
+  } = useQuery<Property[]>({
+    queryKey: ["favorites"],
+    queryFn: fetchFavorites,
+    enabled: !!session?.user && !isAnonymous,
+  });
 
   useEffect(() => {
-    if (session?.user) {
-      const role = session.user.role as Role;
+    const totalPages = Math.max(
+      1,
+      Math.ceil(favorites.length / ITEMS_PER_PAGE),
+    );
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [favorites.length, currentPage]);
 
-      // Check if user can view or manage files/favorites
-      const allowed = hasAnyPermission(role, [
-        // Permission.VIEW_FILES,
-        Permission.MANAGE_FILES,
-      ]);
-      setHasAccess(allowed);
+  const paginatedFavorites = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return favorites.slice(start, start + ITEMS_PER_PAGE);
+  }, [favorites, currentPage]);
 
-      if (allowed) fetchFavorites();
-      else setIsLoading(false); // stop loading if no access
-    }
-  }, [session?.user]);
+  const totalPages = Math.max(1, Math.ceil(favorites.length / ITEMS_PER_PAGE));
 
-  const fetchFavorites = async () => {
-    try {
-      const response = await fetch("/api/favorites");
-      if (!response.ok) {
-        setFavorites([]);
-        return;
-      }
-      const data = await response.json();
-      setFavorites(data || []);
-    } catch (error) {
-      console.error("Error fetching favorites:", error);
-      setFavorites([]);
-    } finally {
-      setIsLoading(false);
-    }
+  // ✅ Called by card after successful mutation — just refetch
+  const handleRemove = async () => {
+    await refetch();
   };
 
-  const removeFavorite = async (propertyId: string) => {
-    try {
-      await fetch(`/api/properties/${propertyId}/favorites`, {
-        method: "DELETE",
-      });
-      setFavorites(favorites.filter((p) => p._id !== propertyId));
-    } catch (error) {
-      console.error("Error removing favorite:", error);
-    }
-  };
-
-  if (isPending || !session?.user) {
+  if (isPending || !session?.user || isAnonymous) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        Loading...
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-muted-foreground font-medium">Loading...</p>
       </div>
     );
   }
 
+  const role = session.user.role as Role;
+  const hasAccess = hasAnyPermission(role, [
+    Permission.VIEW_FAVORITES,
+    Permission.MANAGE_FAVORITES,
+  ]);
+
   if (!hasAccess) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-red-500">
-        You do not have permission to view favorites.
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 text-center px-4">
+        <Heart size={40} className="text-destructive opacity-50" />
+        <p className="text-sm font-semibold text-muted-foreground">
+          You do not have permission to view favorites.
+        </p>
+        <Link
+          href="/properties"
+          className="text-xs font-bold text-primary underline underline-offset-2"
+        >
+          Browse Properties
+        </Link>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         {isLoading ? (
-          <div className="text-center">Loading favorites...</div>
+          <div className="text-center text-sm text-muted-foreground">
+            Loading favorites...
+          </div>
         ) : favorites.length === 0 ? (
-          <div className="text-center">
-            <p className="text-muted-foreground mb-4">
+          <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
+            <Heart size={48} className="text-muted-foreground opacity-30" />
+            <p className="text-sm text-muted-foreground font-medium">
               No saved properties yet.
             </p>
             <Link
               href="/properties"
-              className="inline-block bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90"
+              className="inline-block rounded-lg bg-primary px-6 py-2 text-xs font-bold text-primary-foreground"
             >
               Browse Properties
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {favorites.map((property) => (
-              <div
-                key={property._id}
-                className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-smooth"
-              >
-                {property.images?.[0] && (
-                  <div className="w-full h-48 bg-muted relative">
-                    <img
-                      src={property.images[0] || "/placeholder.svg"}
-                      alt={property.title}
-                      className="w-full h-full object-cover"
-                    />
+          <>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {paginatedFavorites.map((property) => (
+                <FavouriteDetailsCard
+                  key={property._id}
+                  property={property}
+                  // ✅ onRemove just triggers refetch — mutation handled in card
+                  onRemove={handleRemove}
+                />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="mt-10 flex flex-col items-center justify-between gap-4 sm:flex-row">
+                <p className="text-sm text-muted-foreground">
+                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                  {Math.min(currentPage * ITEMS_PER_PAGE, favorites.length)} of{" "}
+                  {favorites.length} favorites
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
+                    disabled={currentPage === 1}
+                    className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <ChevronLeft size={16} />
+                    Previous
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, index) => {
+                      const page = index + 1;
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`h-10 w-10 rounded-lg text-sm font-semibold transition ${
+                            page === currentPage
+                              ? "bg-primary text-primary-foreground"
+                              : "border border-border text-foreground hover:bg-muted"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    {property.title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm mb-3">
-                    {property.location}
-                  </p>
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-xl font-bold text-primary">
-                      ${property.price}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {property.area} sqft
-                    </span>
-                  </div>
-                  <div className="flex gap-2 text-sm text-muted-foreground mb-4">
-                    <span>{property.bedrooms} beds</span>
-                    <span>•</span>
-                    <span>{property.bathrooms} baths</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/properties/${property._id}`}
-                      className="flex-1 bg-primary text-primary-foreground py-2 rounded-lg text-center hover:bg-primary/90 transition-smooth text-sm"
-                    >
-                      View Details
-                    </Link>
-                    <button
-                      onClick={() => removeFavorite(property._id)}
-                      className="flex-1 bg-destructive/10 text-destructive py-2 rounded-lg hover:bg-destructive/20 transition-smooth text-sm"
-                    >
-                      Remove
-                    </button>
-                  </div>
+
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Next
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </main>
     </div>

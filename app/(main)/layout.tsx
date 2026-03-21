@@ -1,13 +1,24 @@
 "use client";
 
 import { useSession } from "@/lib/client/auth-client";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useMemo } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import AppSidebar from "./_components/app-sidebar";
 import DashboardHeader from "./_components/dashboard-header";
 import AccessDeniedPage from "@/components/access-denied";
-import { Role, Permission, hasPermission, hasAnyPermission } from "@/lib/rbac";
+import { Role, Permission, hasAnyPermission } from "@/lib/rbac";
+
+// Paths accessible without authentication
+const PUBLIC_PATHS = [
+  /^\/properties$/,
+  /^\/properties\/[a-fA-F0-9]{24}$/, // only /properties/:id
+];
+
+// Routes where sidebar + header should be hidden (full-screen pages)
+const FULLSCREEN_PATHS = [
+  /^\/properties\/.+/, // /properties/[id], /properties/[id]/map, /properties/[id]/contact …
+];
 
 export default function DashboardLayout({
   children,
@@ -16,45 +27,54 @@ export default function DashboardLayout({
 }) {
   const { data: session, isPending } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
-  // 1️⃣ Not logged in → login
+  const isPublicPath = useMemo(
+    () => !!pathname && PUBLIC_PATHS.some((p) => p.test(pathname)),
+    [pathname],
+  );
+
+  // Hide chrome (sidebar + header) on full-screen routes
+  const isFullscreenRoute = useMemo(
+    () => !!pathname && FULLSCREEN_PATHS.some((p) => p.test(pathname)),
+    [pathname],
+  );
+
+  const isAnonymous = session?.user?.isAnonymous === true;
+
   useEffect(() => {
-    if (!isPending && !session) {
-      router.replace("/login");
-    }
-  }, [session, isPending, router]);
+    if (isPending || isPublicPath) return;
+    if (!session || isAnonymous) router.replace("/login");
+  }, [isPending, isPublicPath, session, isAnonymous, router]);
 
   if (isPending) return null;
-  if (!session) return null;
+  if (!isPublicPath && (!session || isAnonymous)) return null;
 
-  const role = session.user.role as Role;
-
-  // 2️⃣ Logged in but no dashboard permission
-  if (
-    !hasAnyPermission(role, [
-      Permission.VIEW_DASHBOARD,
-      Permission.VIEW_PROPERTIES,
-    ])
-  ) {
-    return <AccessDeniedPage />;
+  if (session && !isAnonymous && !isPublicPath) {
+    const role = session.user.role as Role;
+    if (
+      !hasAnyPermission(role, [
+        Permission.VIEW_DASHBOARD,
+        Permission.VIEW_PROPERTIES,
+      ])
+    ) {
+      return <AccessDeniedPage />;
+    }
   }
 
+  // Full-screen layout — no sidebar, no header, children fill the viewport
+  if (isFullscreenRoute) {
+    return <>{children}</>;
+  }
+
+  // Standard dashboard layout
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="flex h-screen w-full">
-        {/* Sidebar */}
-        <AppSidebar session={session} />
-
-        {/* Main */}
+        {session && !isAnonymous && <AppSidebar session={session} />}
         <main className="flex-1 flex flex-col">
-          {/* Sticky Header */}
           <DashboardHeader />
-
-          {/* Scrollable content */}
-          <div className="w-full overflow-auto">
-          {children}
-
-          </div>
+          <div className="w-full overflow-auto">{children}</div>
         </main>
       </div>
     </SidebarProvider>

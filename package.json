@@ -9,6 +9,7 @@
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
+    "generate": "bunx @better-auth/cli --config ./lib/server/auth.ts --output-dir .",
     "ui": "bunx shadcn@latest add  "
   },
   "dependencies": {
@@ -37,8 +38,10 @@
     "checkbox": "^0.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "crypto-js": "^4.2.0",
     "date-fns": "4.1.0",
     "dlx": "^0.2.1",
+    "framer-motion": "^12.38.0",
     "input-otp": "1.4.1",
     "label": "^0.2.2",
     "leaflet": "^1.9.4",
@@ -62,11 +65,13 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.9",
+    "uuid": "^13.0.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {
     "@react-email/preview-server": "^5.2.5",
     "@tailwindcss/postcss": "^4.1.9",
+    "@types/crypto-js": "^4.2.2",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^25.0.3",
     "@types/react": "^19",

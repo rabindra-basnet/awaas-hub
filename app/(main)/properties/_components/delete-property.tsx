@@ -14,6 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 interface DeletePropertyDialogProps {
   propertyId: string;
@@ -38,12 +39,15 @@ export default function DeletePropertyDialog({
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
-        <button
-          className="text-red-600 hover:text-red-800 disabled:opacity-50"
+        <Button
+          variant="destructive"
+          size="sm"
           disabled={isDeleting}
+          className="flex items-center gap-1"
         >
-          <Trash2 size={20} />
-        </button>
+          <Trash2 size={16} />
+          {isDeleting ? "Deleting..." : "Delete"}
+        </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
