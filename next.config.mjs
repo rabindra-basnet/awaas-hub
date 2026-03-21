@@ -11,6 +11,23 @@ const nextConfig = {
       fullUrl: true,
     },
   },
-}
+  images: {
+    remotePatterns: [
+      // {
+      //   protocol: "https",
+      //   hostname:
+      //     "awaas-hub.bf05a50045c377e8ceee2889ef31765e.r2.cloudflarestorage.com",
+      // },
+      {
+        protocol: "https",
+        hostname: "*.r2.cloudflarestorage.com",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+    ],
+  },
+};
 
-export default nextConfig
+export default nextConfig;

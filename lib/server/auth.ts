@@ -6,7 +6,6 @@ import { admin, anonymous } from "better-auth/plugins";
 import { lastLoginMethod } from "better-auth/plugins";
 import { hashPassword, verifyPassword } from "./password";
 import { sendResetPasswordEmail } from "../emails/send-reset-email";
-import type { HookEndpointContext } from "@better-auth/core";
 
 if (!process.env.BETTER_AUTH_SECRET) {
   throw new Error("❌ BETTER_AUTH_SECRET is not defined");
@@ -57,11 +56,11 @@ export const auth = betterAuth({
     anonymous({
       generateName: () => "Guest",
       generateRandomEmail: () => "guest@awaashub.com",
-      onLinkAccount: async ({ anonymousUser, newUser }) => {
-        // perform actions like moving the cart items from anonymous user to the new user
-        console.table(anonymousUser);
-        console.log(newUser);
-      },
+      // onLinkAccount: async ({ anonymousUser, newUser }) => {
+      //   // perform actions like moving the cart items from anonymous user to the new user
+      //   console.table(anonymousUser);
+      //   console.log(newUser);
+      // },
     }),
   ],
 
@@ -72,6 +71,11 @@ export const auth = betterAuth({
         default: null,
         input: true,
       },
+      // subscription: {
+      //   type: "string",
+      //   default: null,
+      //   input: true,
+      // },
     },
     constraints: {
       email: {

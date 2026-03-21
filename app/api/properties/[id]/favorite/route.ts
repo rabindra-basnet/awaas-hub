@@ -48,6 +48,7 @@ export async function DELETE(
   if (!session?.user) return unauthorized();
 
   const { id } = await params;
+  console.log(id);
   if (!mongoose.Types.ObjectId.isValid(id))
     return badRequest("Invalid property ID");
 

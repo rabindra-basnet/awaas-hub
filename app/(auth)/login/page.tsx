@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -25,16 +25,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 /* ---------------- ZOD SCHEMA ---------------- */
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  email: z.email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+export function LoginComponent() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
+
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirectTo") ?? "/update-profile";
 
   const {
     register,
@@ -56,6 +59,7 @@ export default function LoginPage() {
             onSuccess: () => {
               toast.success("Signed in successfully!");
               router.replace("/update-profile");
+              router.replace(redirectTo);
             },
             onError: (ctx: any) => {
               toast.error(ctx.error.message || "Login failed");
@@ -73,7 +77,8 @@ export default function LoginPage() {
       try {
         await signIn.social({
           provider: "google",
-          callbackURL: "/update-profile",
+          // callbackURL: "/update-profile",
+          callbackURL: redirectTo,
         });
         toast.success("Redirecting to Google...");
         await new Promise(() => {});
@@ -199,5 +204,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="text-center">Loading...</div>}>
+      <LoginComponent />
+    </Suspense>
   );
 }
