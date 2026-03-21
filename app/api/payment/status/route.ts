@@ -100,10 +100,7 @@ export async function GET(req: NextRequest) {
     payment.refId = decoded.transaction_code ?? null;
 
     // Verify with status API instead of trusting redirect payload alone
-    const baseUrl =
-      process.env.NODE_ENV === "production"
-        ? "https://epay.esewa.com.np"
-        : "https://rc.esewa.com.np";
+    const baseUrl = "https://rc.esewa.com.np";
 
     const params = new URLSearchParams({
       product_code: decoded.product_code || process.env.ESEWA_MERCHANT_CODE!,
