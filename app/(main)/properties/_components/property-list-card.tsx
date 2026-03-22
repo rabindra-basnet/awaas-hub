@@ -29,6 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import DeletePropertyDialog from "./delete-property";
 import Link from "next/link";
+import { is } from "zod/v4/locales";
 
 interface PropertyListCardProps {
   property: any;
@@ -44,7 +45,7 @@ const FALLBACK_IMAGE =
 export default function PropertyListCard({
   property,
   canManage,
-  isFavorite = false,
+  isFavorite,
   onToggleFavorite,
   onDelete,
 }: PropertyListCardProps) {
@@ -82,6 +83,8 @@ export default function PropertyListCard({
     e.stopPropagation();
     onToggleFavorite?.(property._id, !isFavorite);
   };
+
+  // console.log("Hello favorite", isFavorite);
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -123,6 +126,8 @@ export default function PropertyListCard({
                 src={src}
                 alt={`${property.title} – photo ${i + 1}`}
                 fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                loading="eager"
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </div>

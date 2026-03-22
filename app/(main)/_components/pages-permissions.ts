@@ -11,6 +11,8 @@ import {
   BarChart3,
   LayoutDashboard,
   File,
+  Speaker,
+  SpeakerIcon,
 } from "lucide-react";
 import { Permission } from "@/lib/rbac";
 
@@ -58,6 +60,13 @@ export const DASHBOARD_PAGES: DashboardPage[] = [
     href: "/settings",
     permission: Permission.MANAGE_SETTINGS,
     icons: Settings,
+  },
+  {
+    title: "Ads",
+    description: "View Ads page",
+    href: "/ads",
+    permission: Permission.MANAGE_ADS,
+    icons: SpeakerIcon,
   },
   {
     title: "Analytics",

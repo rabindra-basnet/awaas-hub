@@ -8,7 +8,8 @@ import AppSidebar from "./_components/app-sidebar";
 import DashboardHeader from "./_components/dashboard-header";
 import AccessDeniedPage from "@/components/access-denied";
 import { Role, Permission, hasAnyPermission } from "@/lib/rbac";
-import { AnonymousProvider } from "../guest-provider";
+// import { AnonymousProvider } from "../guest-provider";
+// import Header from "@/components/header";
 
 // Paths accessible without authentication
 const PUBLIC_PATHS = [
@@ -65,7 +66,12 @@ export default function DashboardLayout({
 
   // Full-screen layout — no sidebar, no header, children fill the viewport
   if (isFullscreenRoute) {
-    return <>{children}</>;
+    return (
+      <>
+        {/*<Header />*/}
+        {children}
+      </>
+    );
   }
 
   // Standard dashboard layout

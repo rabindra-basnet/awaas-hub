@@ -664,7 +664,6 @@ function LeafletMapPicker({
                   position={[lat, lng]}
                   icon={pinIcon}
                   draggable
-                  // @ts-expect-error
                   eventHandlers={{
                     dragend(e: {
                       target: { getLatLng: () => { lat: number; lng: number } };

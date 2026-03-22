@@ -7,8 +7,8 @@ import { getSession } from "@/lib/client/auth-client";
 import { useEffect, useState } from "react";
 import AccessDeniedPage from "@/components/access-denied";
 import Loading from "@/components/loading";
-import PropertyForm from "../_components/property-formss";
-import { type PropertyFormValues } from "../_components/property-formss";
+import PropertyForm from "../_components/property-form";
+import { type PropertyFormValues } from "../_components/property-form";
 import {
   useCreateProperty,
   PropertyForm as PropertyFormType,

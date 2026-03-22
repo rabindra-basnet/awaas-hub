@@ -8,6 +8,7 @@
     "db:init": "bun --env-file=.env.local ts-node scripts/init-mongodb.ts",
     "dev": "next dev",
     "lint": "eslint .",
+    "scan": "next dev & bun x react-scan@latest localhost:3000",
     "start": "next start",
     "generate": "bunx @better-auth/cli --config ./lib/server/auth.ts --output-dir .",
     "ui": "bunx shadcn@latest add  "

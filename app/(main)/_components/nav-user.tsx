@@ -102,7 +102,7 @@ export function NavUser({
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
+            {/*<DropdownMenuSeparator />*/}
             {/* <DropdownMenuGroup>
                             <DropdownMenuItem>
                                 <Sparkles />
@@ -123,7 +123,7 @@ export function NavUser({
                         </DropdownMenuGroup>
             <DropdownMenuItem>
                 */}
-              {/* <ThemeToggleMenuItem /> */}
+            {/* <ThemeToggleMenuItem /> */}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
               <LogOut />

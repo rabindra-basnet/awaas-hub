@@ -30,30 +30,28 @@ import {
   useToggleFavorite,
 } from "@/lib/client/queries/properties.queries";
 
+import PropertyNotFound from "./[id]/_components/property-not-found";
+
+// ✅ Ad components
+import { AdBanner } from "@/components/ads/AdBanner";
+import { InterstitialAd } from "@/components/ads/InterstitialAd";
+
 const ITEMS_PER_PAGE = 12;
+// Inject an inline ad after every Nth property card
+const AD_INJECT_EVERY = 6;
 
-function usePermissionCheck() {
-  const { data: session, isPending } = useSession();
+export default function PropertiesPage() {
+  const router = useRouter();
 
-  // ✅ Anonymous users cannot manage
+  const { data: session, isPending: isSessionLoading } = useSession();
+
   const isAnonymous = session?.user?.isAnonymous === true;
 
   const canManage =
-    !isPending && !!session && !isAnonymous
+    !isSessionLoading && !!session && !isAnonymous
       ? hasPermission(session.user.role as Role, Permission.MANAGE_PROPERTIES)
       : false;
 
-  return { canManage, isPending, isAnonymous };
-}
-
-function PropertiesContent({
-  canManage,
-  isAnonymous,
-}: {
-  canManage: boolean;
-  isAnonymous: boolean;
-}) {
-  const router = useRouter();
   const { data: properties = [], isLoading, error } = useProperties();
   const deleteProperty = useDeleteProperty();
   const toggleFav = useToggleFavorite();
@@ -89,8 +87,6 @@ function PropertiesContent({
     currentPage * ITEMS_PER_PAGE,
   );
 
-  // ✅ Anonymous → redirect to login
-  // ✅ Logged-in non-manager → also redirect (can't delete/favorite without permission)
   const requireAuth = (action: () => void) => {
     if (isAnonymous) {
       router.push("/login");
@@ -99,21 +95,15 @@ function PropertiesContent({
     action();
   };
 
-  if (isLoading) return <Loading />;
+  if (isLoading || isSessionLoading) return <Loading />;
 
-  if (error) {
-    return (
-      <div className="p-6 text-center">
-        <p className="text-red-500 font-medium">Failed to load properties</p>
-        <p className="text-sm text-gray-600 mt-2">
-          Please try refreshing the page
-        </p>
-      </div>
-    );
-  }
+  if (error) return <PropertyNotFound />;
 
   return (
     <div className="w-full max-w-350 mx-auto px-4 lg:px-6 py-6 space-y-6 min-h-screen">
+      {/* ✅ Interstitial ad — shown once per session on page load */}
+      <InterstitialAd />
+
       {/* ✅ FAB only for managers */}
       {canManage && <FloatingAddProperty />}
 
@@ -173,7 +163,6 @@ function PropertiesContent({
             </SelectContent>
           </Select>
 
-          {/* ✅ Add button only for managers */}
           {canManage && (
             <Button onClick={() => router.push("/properties/new")}>
               Add New Property
@@ -182,7 +171,7 @@ function PropertiesContent({
         </div>
       </div>
 
-      {/* GRID */}
+      {/* PROPERTY GRID + INLINE ADS */}
       {currentData.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
           <Building2 size={48} className="mb-4 opacity-30" />
@@ -190,25 +179,43 @@ function PropertiesContent({
           <p className="text-xs mt-1">Try adjusting your search or filters</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {currentData.map((property: any) => (
-            <PropertyListCard
-              key={property._id}
-              property={property}
-              canManage={canManage}
-              isFavorite={favoriteIds.includes(property._id)}
-              onToggleFavorite={(id, isFav) =>
-                // ✅ Anonymous → login, logged-in → toggle
-                requireAuth(() =>
-                  toggleFav.mutate({ propertyId: id, isFav: !isFav }),
-                )
-              }
-              onDelete={(id: string) =>
-                // ✅ Anonymous → login, logged-in manager → delete
-                requireAuth(() => deleteProperty.mutate(id))
-              }
-            />
-          ))}
+        <div className="space-y-6">
+          {/* ✅ Top banner ad — above the grid */}
+          <AdBanner slot="properties-top" priority />
+
+          {/* Grid with inline ad injected every AD_INJECT_EVERY cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentData.map((property: any, index: number) => (
+              <React.Fragment key={property._id}>
+                <PropertyListCard
+                  property={property}
+                  canManage={canManage}
+                  isFavorite={favoriteIds.includes(property._id)}
+                  onToggleFavorite={(id, isFav) =>
+                    requireAuth(() =>
+                      toggleFav.mutate({ propertyId: id, isFav: !isFav }),
+                    )
+                  }
+                  onDelete={(id: string) =>
+                    requireAuth(() => deleteProperty.mutate(id))
+                  }
+                />
+
+                {/* ✅ Inline banner ad after every AD_INJECT_EVERY-th card */}
+                {(index + 1) % AD_INJECT_EVERY === 0 &&
+                  index < currentData.length - 1 && (
+                    <div className="col-span-1 md:col-span-2 lg:col-span-3">
+                      <AdBanner
+                        slot="properties-inline"
+                        className="w-full"
+                        slim
+                      />
+                    </div>
+                  )}
+              </React.Fragment>
+            ))}
+          </div>
+          <AdBanner slot="properties-inline" priority />
         </div>
       )}
 
@@ -248,13 +255,4 @@ function PropertiesContent({
       )}
     </div>
   );
-}
-
-export default function PropertiesPage() {
-  const { canManage, isPending, isAnonymous } = usePermissionCheck();
-
-  if (isPending) return <Loading />;
-
-  // ✅ Everyone (anonymous + logged-in) can view the list
-  return <PropertiesContent canManage={canManage} isAnonymous={isAnonymous} />;
 }

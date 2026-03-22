@@ -16,47 +16,47 @@ import {
 import { getDb } from "@/lib/server/db";
 import { extractPropertyFields } from "../new/route";
 
-// // GET /api/properties/:id
-// export async function GET(
-//   req: Request,
-//   { params }: { params: Promise<{ id: string }> },
-// ) {
-//   try {
-//     await getDb();
+type BoundaryPoint =
+  | [number, number]
+  | { lat: number; lng: number }
+  | { latitude: number; longitude: number };
 
-//     const session = await getServerSession();
-//     if (!session?.user) return unauthorized();
+function validateBoundary(boundaryPoints: unknown): boolean {
+  if (boundaryPoints == null) return true; // allow empty / optional boundary
 
-//     const role = session.user.role as Role;
-//     if (!hasPermission(role, Permission.VIEW_PROPERTIES)) return forbidden();
+  if (!Array.isArray(boundaryPoints)) return false;
+  if (boundaryPoints.length < 3) return false;
 
-//     const { id } = await params;
-//     if (!mongoose.Types.ObjectId.isValid(id))
-//       return badRequest("Invalid property ID");
+  return boundaryPoints.every((point) => {
+    let lat: number | undefined;
+    let lng: number | undefined;
 
-//     const property = await Property.findById(id).lean();
-//     if (!property) return notFound("Property not found");
+    if (Array.isArray(point) && point.length === 2) {
+      lat = Number(point[0]);
+      lng = Number(point[1]);
+    } else if (point && typeof point === "object") {
+      const p = point as Record<string, unknown>;
 
-//     if (
-//       role === Role.SELLER &&
-//       property.sellerId.toString() !== session.user.id
-//     ) {
-//       return forbidden();
-//     }
+      if ("lat" in p && "lng" in p) {
+        lat = Number(p.lat);
+        lng = Number(p.lng);
+      } else if ("latitude" in p && "longitude" in p) {
+        lat = Number(p.latitude);
+        lng = Number(p.longitude);
+      }
+    }
 
-//     const isFavorite = await Favorite.exists({
-//       userId: session.user.id,
-//       propertyId: id,
-//     });
+    return (
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      lat! >= -90 &&
+      lat! <= 90 &&
+      lng! >= -180 &&
+      lng! <= 180
+    );
+  });
+}
 
-//     return NextResponse.json({ ...property, isFavorite: !!isFavorite });
-//   } catch (err: any) {
-//     console.error(err);
-//     return internalServerError(err.message);
-//   }
-// }
-
-// GET /api/properties/:id
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -66,325 +66,51 @@ export async function GET(
 
     const session = await getServerSession();
     const role = (session?.user?.role as Role) ?? Role.GUEST;
+    const userId = session?.user?.id;
 
     const { id } = await params;
     if (!mongoose.Types.ObjectId.isValid(id))
       return badRequest("Invalid property ID");
 
-    const property = await Property.findById(id).lean();
-    if (!property) return notFound("Property not found");
+    // ── Build query based on role ────────────────────────────────────────────
+    // Filter at DB level so unverified docs are never loaded for guests/buyers
+    let propertyQuery: Record<string, any> = {
+      _id: new mongoose.Types.ObjectId(id),
+    };
 
-    // ✅ Sellers can only view their own properties
-    if (
-      role === Role.SELLER &&
-      session?.user?.id &&
-      property.sellerId.toString() !== session.user.id
-    ) {
-      return forbidden();
+    if (role === Role.ADMIN) {
+      // Admin sees any property regardless of status
+    } else if (role === Role.SELLER && userId) {
+      // Seller can only see their own verified listings
+      // Pending/rejected return notFound so the detail page is inaccessible
+      propertyQuery.sellerId = new mongoose.Types.ObjectId(userId);
+      // propertyQuery.verificationStatus = "verified";
+    } else {
+      // Guest / Buyer — verified only
+      propertyQuery.verificationStatus = "verified";
     }
 
-    // ✅ Only check favorites if user is authenticated
-    const isFavorite = session?.user?.id
-      ? await Favorite.exists({ userId: session.user.id, propertyId: id })
+    const property = await Property.findOne(propertyQuery).lean();
+    if (!property) return notFound("Property not found");
+
+    // Normalize missing verificationStatus for old docs (always present in response)
+    const verificationStatus = property.verificationStatus ?? "pending";
+
+    // ── Favorites ────────────────────────────────────────────────────────────
+    const isFavorite = userId
+      ? await Favorite.exists({ userId, propertyId: id })
       : false;
 
-    return NextResponse.json({ ...property, isFavorite: !!isFavorite });
+    return NextResponse.json({
+      ...property,
+      verificationStatus, // always present in response
+      isFavorite: !!isFavorite,
+    });
   } catch (err: any) {
     console.error(err);
     return internalServerError(err.message);
   }
 }
-// /**
-//  * PUT /api/properties/:id
-//  * - Updates all property fields including new schema fields
-//  * - Handles file linking and deletion
-//  */
-// export async function PUT(
-//   req: NextRequest,
-//   { params }: { params: Promise<{ id: string }> },
-// ) {
-//   try {
-//     await getDb();
-
-//     const session = await getServerSession();
-//     if (!session?.user?.id) return unauthorized();
-
-//     const role = session.user.role as Role;
-//     if (!hasPermission(role, Permission.MANAGE_PROPERTIES)) return forbidden();
-
-//     const { id } = await params;
-//     if (!mongoose.Types.ObjectId.isValid(id)) return badRequest("Invalid ID");
-
-//     const property = await Property.findById(id);
-//     if (!property) return notFound();
-
-//     if (
-//       role !== Role.ADMIN &&
-//       property.sellerId.toString() !== session.user.id
-//     ) {
-//       return forbidden();
-//     }
-
-//     const body = await req.json();
-
-//     const {
-//       // File management — not stored on Property directly
-//       fileIds,
-//       deletedFileIds,
-
-//       // Core
-//       title,
-//       price,
-//       location,
-//       description,
-//       status,
-
-//       // Property details
-//       category,
-//       area,
-//       bedrooms,
-//       bathrooms,
-//       face,
-//       roadType,
-//       roadAccess,
-//       negotiable,
-
-//       // Location details
-//       municipality,
-//       wardNo,
-//       ringRoad,
-
-//       // Nearby facilities
-//       nearHospital,
-//       nearAirport,
-//       nearSupermarket,
-//       nearSchool,
-//       nearGym,
-//       nearTransport,
-//       nearAtm,
-//       nearRestaurant,
-//     } = body;
-
-//     /* ---------------- Handle File Deletions ---------------- */
-//     if (deletedFileIds?.length > 0) {
-//       for (const fileId of deletedFileIds) {
-//         const file = await Files.findById(fileId);
-//         if (file && file.propertyId?.toString() === id) {
-//           try {
-//             await deleteFile(file.storedName);
-//           } catch (error) {
-//             console.error(`Failed to delete file ${file.storedName}:`, error);
-//           }
-//           await Files.findByIdAndUpdate(fileId, {
-//             isDeleted: true,
-//             deletedAt: new Date(),
-//           });
-//         }
-//       }
-//     }
-
-//     /* ---------------- Link New Files to Property ---------------- */
-//     if (fileIds?.length > 0) {
-//       for (const fileId of fileIds) {
-//         await Files.findByIdAndUpdate(fileId, { propertyId: property._id });
-//       }
-//     }
-
-//     /* ---------------- Update Property ---------------- */
-//     const updated = await Property.findByIdAndUpdate(
-//       id,
-//       {
-//         // Core
-//         title,
-//         price,
-//         location,
-//         description,
-//         status,
-
-//         // Property details
-//         category,
-//         area,
-//         bedrooms,
-//         bathrooms,
-//         face,
-//         roadType,
-//         roadAccess,
-//         negotiable,
-
-//         // Location details
-//         municipality,
-//         wardNo,
-//         ringRoad,
-
-//         // Nearby facilities
-//         nearHospital,
-//         nearAirport,
-//         nearSupermarket,
-//         nearSchool,
-//         nearGym,
-//         nearTransport,
-//         nearAtm,
-//         nearRestaurant,
-//       },
-//       { new: true, runValidators: true },
-//     );
-
-//     return NextResponse.json({ success: true, property: updated });
-//   } catch (err: any) {
-//     console.error(err);
-//     return internalServerError(err.message);
-//   }
-// }
-
-// /**
-//  * DELETE /api/properties/:id
-//  * - Deletes property, all associated R2 files, and all favorites
-//  */
-// export async function DELETE(
-//   req: Request,
-//   { params }: { params: Promise<{ id: string }> },
-// ) {
-//   try {
-//     await getDb();
-
-//     const session = await getServerSession();
-//     if (!session?.user?.id) return unauthorized();
-
-//     const role = session.user.role as Role;
-//     if (!hasPermission(role, Permission.MANAGE_PROPERTIES)) return forbidden();
-
-//     const { id } = await params;
-//     if (!mongoose.Types.ObjectId.isValid(id)) return badRequest("Invalid ID");
-
-//     const property = await Property.findById(id);
-//     if (!property) return notFound();
-
-//     if (
-//       role !== Role.ADMIN &&
-//       property.sellerId.toString() !== session.user.id
-//     ) {
-//       return forbidden();
-//     }
-
-//     /* ---------------- Delete Files from R2 + DB ---------------- */
-//     const files = await Files.find({ propertyId: id, isDeleted: false });
-
-//     for (const file of files) {
-//       try {
-//         await deleteFile(file.storedName);
-//         await Files.findByIdAndUpdate(file._id, {
-//           isDeleted: true,
-//           deletedAt: new Date(),
-//         });
-//       } catch (error) {
-//         console.error(`Failed to delete file ${file.storedName}:`, error);
-//       }
-//     }
-
-//     /* ---------------- Delete Property & Favorites ---------------- */
-//     await Property.findByIdAndDelete(id);
-//     await Favorite.deleteMany({ propertyId: id });
-
-//     return NextResponse.json({ success: true });
-//   } catch (err: any) {
-//     console.error(err);
-//     return internalServerError(err.message);
-//   }
-// }
-
-// ── PUT /api/properties/[id] ──────────────────────────────────────────
-/**
- * Updates all property fields including coordinates.
- * Handles file linking and deletion.
- */
-// export async function PUT(
-//   req: NextRequest,
-//   { params }: { params: Promise<{ id: string }> },
-// ) {
-//   try {
-//     await getDb();
-
-//     const session = await getServerSession();
-//     if (!session?.user?.id) return unauthorized();
-
-//     const role = session.user.role as Role;
-//     if (!hasPermission(role, Permission.MANAGE_PROPERTIES)) return forbidden();
-
-//     const { id } = await params;
-//     if (!mongoose.Types.ObjectId.isValid(id)) return badRequest("Invalid ID");
-
-//     const property = await Property.findById(id);
-//     if (!property) return notFound();
-
-//     if (
-//       role !== Role.ADMIN &&
-//       property.sellerId.toString() !== session.user.id
-//     ) {
-//       return forbidden();
-//     }
-
-//     const body = (await req.json()) as Record<string, unknown> & {
-//       fileIds?: string[];
-//       deletedFileIds?: string[];
-//     };
-
-//     const { fileIds, deletedFileIds } = body;
-//     const fields = extractPropertyFields(body);
-
-//     // Validate coordinates if provided
-//     if (
-//       fields.latitude != null &&
-//       (isNaN(fields.latitude) || fields.latitude < -90 || fields.latitude > 90)
-//     ) {
-//       return badRequest("Invalid latitude — must be between -90 and 90");
-//     }
-//     if (
-//       fields.longitude != null &&
-//       (isNaN(fields.longitude) ||
-//         fields.longitude < -180 ||
-//         fields.longitude > 180)
-//     ) {
-//       return badRequest("Invalid longitude — must be between -180 and 180");
-//     }
-
-//     /* ── Handle File Deletions ── */
-//     if (deletedFileIds?.length) {
-//       for (const fileId of deletedFileIds) {
-//         const file = await Files.findById(fileId);
-//         if (file && file.propertyId?.toString() === id) {
-//           try {
-//             await deleteFile(file.storedName);
-//           } catch (e) {
-//             console.error(e);
-//           }
-//           await Files.findByIdAndUpdate(fileId, {
-//             isDeleted: true,
-//             deletedAt: new Date(),
-//           });
-//         }
-//       }
-//     }
-
-//     /* ── Link New Files ── */
-//     if (fileIds?.length) {
-//       for (const fileId of fileIds) {
-//         await Files.findByIdAndUpdate(fileId, { propertyId: property._id });
-//       }
-//     }
-
-//     /* ── Update Property ── */
-//     const updated = await Property.findByIdAndUpdate(
-//       id,
-//       { ...fields },
-//       { new: true, runValidators: true },
-//     );
-
-//     return NextResponse.json({ success: true, property: updated });
-//   } catch (err: any) {
-//     console.error(err);
-//     return internalServerError(err.message);
-//   }
-// }
 
 // ── PUT /api/properties/[id] ──────────────────────────────────────────
 export async function PUT(

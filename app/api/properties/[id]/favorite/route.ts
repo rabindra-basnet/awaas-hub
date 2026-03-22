@@ -6,7 +6,7 @@ import {
   Permission,
   Role,
 } from "@/lib/rbac";
-import { connectToDatabase } from "@/lib/server/db";
+import { getDb } from "@/lib/server/db";
 import { getServerSession } from "@/lib/server/getSession";
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
@@ -28,7 +28,7 @@ export async function POST(
   if (!mongoose.Types.ObjectId.isValid(id))
     return badRequest("Invalid property ID");
 
-  await connectToDatabase();
+  await getDb();
 
   // Upsert favorite
   const favorite = await Favorite.findOneAndUpdate(
