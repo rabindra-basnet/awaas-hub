@@ -346,13 +346,13 @@ export default function PropertyPage({
         </div>
       )}
 
-      <div className="max-w-screen-xl mx-auto px-4 md:px-8 py-6 md:py-10">
+      <div className="max-w-screen-xl mx-auto px-4 md:px-4 py-4 md:py-4">
         {/* ── HERO GALLERY + INFO SPLIT ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6 lg:gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6 lg:gap-6 items-start">
           {/* LEFT: Gallery — second on mobile so info panel is seen first */}
           <div className="flex flex-col gap-3 min-w-0 order-2 lg:order-1">
             {/* ✅ Main image — fill + sizes for the hero slot */}
-            <div className="relative w-full rounded-2xl overflow-hidden bg-muted group aspect-[6/4]">
+            <div className="relative w-full rounded-2xl overflow-hidden bg-muted group aspect-6/4">
               {loadingImages ? (
                 <div className="absolute inset-0 bg-muted animate-pulse" />
               ) : (
@@ -478,7 +478,8 @@ export default function PropertyPage({
           </div>
 
           {/* RIGHT: Info Panel */}
-          <div className="flex flex-col gap-5 order-1 lg:order-2 lg:sticky lg:top-[88px] lg:self-start">
+          {/*  <div className="flex flex-col gap-5 order-1 lg:order-2 lg:sticky lg:top-[88px] lg:self-start">*/}
+          <div className="flex flex-col gap-5 order-1 lg:order-2">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold leading-tight tracking-tight mb-2">
                 {title || "Property"}
