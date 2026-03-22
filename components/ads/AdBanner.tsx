@@ -3,15 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import type { Ad } from "@/lib/client/queries/ads.queries";
+import Link from "next/link";
 
 interface AdBannerProps {
   slot: string;
   className?: string;
-  /** slim=true renders a short horizontal banner (e.g. 80px tall) instead of full-height */
   slim?: boolean;
-  /** priority=true for above-fold ads (LCP optimization) */
   priority?: boolean;
 }
+
+const AdBadge = () => (
+  <span className="absolute top-2 left-2 z-10 select-none text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground border border-border/60">
+    Ads
+  </span>
+);
 
 export function AdBanner({
   slot,
@@ -62,12 +67,11 @@ export function AdBanner({
     fetch(`/api/ads/${ad._id}/click`, { method: "POST" }).catch(() => {});
   };
 
-  // ── SLIM MODE — compact horizontal strip ──────────────────────────────────
   if (slim) {
     return (
       <div className={`relative w-full ${className}`}>
-        {/* "Sponsored" label */}
-        <span className="absolute top-1 right-2 text-[9px] font-semibold tracking-widest text-white/60 uppercase z-10 select-none drop-shadow">
+        <AdBadge />
+        <span className="absolute top-1 right-2 z-10 select-none text-[9px] font-semibold tracking-widest text-white/60 uppercase drop-shadow">
           Sponsored
         </span>
 
@@ -78,17 +82,16 @@ export function AdBanner({
             className="w-full h-16 rounded-xl overflow-hidden border border-border/40 cursor-pointer bg-muted/30"
           />
         ) : (
-          <a
+          <Link
             href={ad.targetUrl}
             target="_blank"
             rel="noopener noreferrer sponsored"
             onClick={handleClick}
             className="flex items-center gap-3 w-full h-16 rounded-xl overflow-hidden border border-border/40 hover:border-border transition-colors bg-muted/20 hover:bg-muted/40 px-3 group"
           >
-            {/* Thumbnail */}
             {ad.imageUrl && (
               <div className="relative shrink-0 w-24 h-10 rounded-lg overflow-hidden">
-                <Image
+                <img
                   src={ad.imageUrl}
                   alt={ad.altText ?? "Ad"}
                   fill
@@ -98,8 +101,6 @@ export function AdBanner({
                 />
               </div>
             )}
-
-            {/* Text content */}
             <div className="flex-1 min-w-0">
               {ad.title && (
                 <p className="text-xs font-semibold truncate text-foreground group-hover:text-primary transition-colors">
@@ -112,23 +113,18 @@ export function AdBanner({
                 </p>
               )}
             </div>
-
-            {/* CTA arrow */}
             <div className="shrink-0 text-[10px] font-bold text-primary border border-primary/30 rounded-full px-2.5 py-1 group-hover:bg-primary group-hover:text-primary-foreground transition-all whitespace-nowrap">
               Learn More →
             </div>
-          </a>
+          </Link>
         )}
       </div>
     );
   }
 
-  // ── FULL MODE — top banner — natural image size, centred ─────────────────
   return (
     <div className={`relative flex justify-start ${className}`}>
-      <span className="absolute top-1 right-2 text-[9px] font-semibold tracking-widest text-muted-foreground/50 uppercase z-10 select-none">
-        Ad
-      </span>
+      <AdBadge />
 
       {ad.htmlContent ? (
         <div
@@ -137,7 +133,7 @@ export function AdBanner({
           className="rounded-xl overflow-hidden border border-dashed border-muted-foreground/20 cursor-pointer"
         />
       ) : (
-        <a
+        <Link
           href={ad.targetUrl}
           target="_blank"
           rel="noopener noreferrer sponsored"
@@ -157,7 +153,7 @@ export function AdBanner({
           {!loaded && (
             <div className="w-64 h-20 bg-muted/40 animate-pulse rounded-xl" />
           )}
-        </a>
+        </Link>
       )}
     </div>
   );

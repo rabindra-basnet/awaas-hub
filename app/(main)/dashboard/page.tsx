@@ -10,7 +10,7 @@ import Loading from "../_components/loading";
 import { useDashboardData } from "@/lib/client/queries/dashboard.queries";
 import { forbidden } from "@/lib/error";
 
-export const iconMap = {
+export const ICONMAP = {
   Home,
   Building2,
   Users,
@@ -33,8 +33,10 @@ export default function DashboardPage() {
 
   const stats = safeDashboard.stats.map((stat) => ({
     ...stat,
-    icon: iconMap[stat.icon as keyof typeof iconMap],
+    icon: ICONMAP[stat.icon as keyof typeof ICONMAP],
   }));
+
+  console.log(dashboard);
 
   return (
     <div className="flex-1 overflow-y-auto">
