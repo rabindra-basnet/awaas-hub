@@ -1322,13 +1322,14 @@ export default function PropertyPage({
                   return (
                     <Link
                       key={label}
-                      href={canAccess ? href : `/properties/${id}/contact`}
+                      href={href}
                       className={cn(
                         "flex items-center gap-3 p-3.5 rounded-xl border bg-muted/20 transition-all cursor-pointer group",
                         canAccess
                           ? "border-border hover:border-primary/40 hover:bg-primary/5"
                           : "border-dashed border-border hover:border-amber-400/40 hover:bg-amber-500/5",
                       )}
+                      disabled={!canAccess}
                       onClick={(e) => {
                         if (!canAccess) {
                           e.preventDefault();
