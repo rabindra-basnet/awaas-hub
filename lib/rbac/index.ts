@@ -26,6 +26,9 @@ export enum Permission {
 
   VIEW_FILES = "view_files", // view-only
   MANAGE_FILES = "manage_files", // add/upload/delete
+
+  VIEW_ADS = "view_ads",
+  MANAGE_ADS = "manage_ads",
 }
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
@@ -45,8 +48,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_FAVORITES,
     Permission.MANAGE_SETTINGS,
     Permission.VIEW_DASHBOARD,
-    Permission.VIEW_FILES,
-    Permission.MANAGE_FILES,
+    // Permission.VIEW_FILES,
+    // Permission.MANAGE_FILES,
   ],
 
   [Role.BUYER]: [
@@ -57,7 +60,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_PROFILE,
     Permission.MANAGE_SETTINGS,
     Permission.VIEW_DASHBOARD,
-    Permission.VIEW_FILES,
+    // Permission.VIEW_FILES,
   ],
 };
 

@@ -2,109 +2,66 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { Property } from "@/lib/models/Property";
-import { Role, Permission, hasPermission } from "@/lib/rbac";
+import { Role } from "@/lib/rbac";
 import { getServerSession } from "@/lib/server/getSession";
-import { forbidden, internalServerError, unauthorized } from "@/lib/error";
+import { internalServerError } from "@/lib/error";
 import Files from "@/lib/models/Files";
 import { getSignedUrlForDownload } from "@/lib/server/r2-client";
 import { getDb } from "@/lib/server/db";
-/**
- * GET /api/properties
- * - Admin, Seller, Buyer can view properties
- * - Seller sees only their own, others see all
- */
-// export async function GET() {
-//   try {
-//     await getDb();
-
-//     const session = await getServerSession();
-//     if (!session?.user) return unauthorized();
-
-//     const role = (session.user.role as Role) ?? Role.GUEST;
-
-//     // Anyone with view_properties can see
-//     if (!hasPermission(role, Permission.VIEW_PROPERTIES)) return forbidden();
-
-//     const userId = session.user.id;
-//     const query =
-//       role === Role.SELLER && mongoose.Types.ObjectId.isValid(userId)
-//         ? { sellerId: new mongoose.Types.ObjectId(userId) }
-//         : {}; // Admin / Buyer see all
-
-//     const properties = await Property.find(query)
-//       .sort({ createdAt: -1 })
-//       .lean();
-
-//     if (!properties.length) return NextResponse.json([]);
-
-//     const propertiesIds = properties.map((p) => p._id);
-
-//     const files = await Files.find({
-//       propertyId: { $in: propertiesIds },
-//       isDeleted: false,
-//     })
-//       .sort({ createdAt: 1 })
-//       .lean();
-
-//     const firstFileByProperty = new Map<string, any>();
-
-//     for (const file of files) {
-//       const propertyId = file.propertyId?.toString();
-//       if (propertyId && !firstFileByProperty.has(propertyId)) {
-//         firstFileByProperty.set(propertyId, file);
-//       }
-//     }
-
-//     const propertiesWithImages = await Promise.all(
-//       properties.map(async (property: any) => {
-//         const propertyId = property._id.toString();
-//         const firstFile = firstFileByProperty.get(propertyId);
-
-//         if (!firstFile?.storedName) {
-//           return { ...property, images: [] };
-//         }
-
-//         const imageUrl = await getSignedUrlForDownload(firstFile.storedName);
-
-//         return { ...property, images: [imageUrl] };
-//       }),
-//     );
-
-//     return NextResponse.json(propertiesWithImages);
-//   } catch (err) {
-//     console.error(err);
-//     return internalServerError();
-//   }
-// }
 
 /**
  * GET /api/properties
- * - Unauthenticated / Guest → sees all properties (public)
- * - Seller → sees only their own properties
- * - Admin / Buyer → sees all properties
+ *
+ * Role        │ Query
+ * ────────────┼──────────────────────────────────────────────────────────────
+ * Guest/Buyer │ { verificationStatus: "verified" }  — verified only
+ * Seller      │ { sellerId: <their id> }             — all own listings
+ * Admin       │ {}                                   — everything
  */
 export async function GET() {
   try {
     await getDb();
-
     const session = await getServerSession();
     const role = (session?.user?.role as Role) ?? Role.GUEST;
     const userId = session?.user?.id;
 
-    // ✅ Build query based on role
-    // Sellers only see their own; everyone else (including guests) sees all
-    const query =
-      role === Role.SELLER && userId && mongoose.Types.ObjectId.isValid(userId)
-        ? { sellerId: new mongoose.Types.ObjectId(userId) }
-        : {};
+    // console.debug is suppressed by Next.js — use console.log
+    console.log("[GET /api/properties] role:", role, "userId:", userId);
+
+    let query: Record<string, any>;
+
+    if (role === Role.ADMIN) {
+      // Admin sees every property regardless of verification status
+      query = {};
+    } else if (
+      role === Role.SELLER &&
+      userId &&
+      mongoose.Types.ObjectId.isValid(userId)
+    ) {
+      // Sellers see all of their own listings (any status)
+      query = { sellerId: new mongoose.Types.ObjectId(userId) };
+    } else {
+      // Guests and buyers:
+      // Only show explicitly verified docs.
+      // Docs where the field is missing/null/pending are excluded
+      // by requiring the field to equal "verified" AND exist.
+      query = {
+        verificationStatus: "verified",
+      };
+    }
+
+    console.log("[GET /api/properties] query:", JSON.stringify(query));
 
     const properties = await Property.find(query)
       .sort({ createdAt: -1 })
       .lean();
 
+    console.log("[GET /api/properties] found:", properties.length);
+
     if (!properties.length) return NextResponse.json([]);
 
     const propertiesIds = properties.map((p) => p._id);
+
     const files = await Files.find({
       propertyId: { $in: propertiesIds },
       isDeleted: false,
@@ -125,16 +82,25 @@ export async function GET() {
         const propertyId = property._id.toString();
         const firstFile = firstFileByProperty.get(propertyId);
         if (!firstFile?.storedName) {
-          return { ...property, images: [] };
+          return {
+            ...property,
+            // Normalize missing field so frontend always gets a value
+            verificationStatus: property.verificationStatus ?? "pending",
+            images: [],
+          };
         }
         const imageUrl = await getSignedUrlForDownload(firstFile.storedName);
-        return { ...property, images: [imageUrl] };
+        return {
+          ...property,
+          verificationStatus: property.verificationStatus ?? "pending",
+          images: [imageUrl],
+        };
       }),
     );
 
     return NextResponse.json(propertiesWithImages);
   } catch (err) {
-    console.error(err);
+    console.error("[GET /api/properties] error:", err);
     return internalServerError();
   }
 }

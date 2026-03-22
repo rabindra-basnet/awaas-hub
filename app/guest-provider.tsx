@@ -1,39 +1,41 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { authClient } from "@/lib/client/auth-client";
-import { toast } from "sonner";
 
 type Props = {
   children: React.ReactNode;
 };
 
 export function AnonymousProvider({ children }: Props) {
+  const { data: session, isPending } = authClient.useSession();
+  const isSigningInRef = useRef(false);
+
   useEffect(() => {
-    const init = async () => {
+    const signInAnonymousIfNeeded = async () => {
+      if (isPending) return;
+      if (session) return; // includes anonymous session
+      if (isSigningInRef.current) return;
+
+      isSigningInRef.current = true;
+
       try {
-        const sessionResult = await authClient.getSession();
-        console.log(sessionResult);
+        const result = await authClient.signIn.anonymous();
 
-        if (!sessionResult?.data == null) {
-          const signInResult = await authClient.signIn.anonymous();
-          const userId = signInResult?.data?.user?.id;
+        console.log("he", result);
 
-          if (!userId) {
-            toast.error("Anonymous login failed");
-            return;
-          }
-
-          console.log("Anonymous user:", userId);
+        if (result?.error) {
+          console.error("Anonymous sign-in failed:", result.error);
         }
-      } catch (err) {
-        console.error(err);
-        toast.error("Failed to initialize anonymous session");
+      } catch (error) {
+        console.error("Anonymous sign-in error:", error);
+      } finally {
+        isSigningInRef.current = false;
       }
     };
 
-    init();
-  }, []);
+    signInAnonymousIfNeeded();
+  }, [session, isPending]);
 
   return <>{children}</>;
 }

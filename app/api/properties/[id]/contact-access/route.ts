@@ -1,4 +1,3 @@
-// app/api/properties/[propertyId]/contact-access/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 
@@ -7,6 +6,7 @@ import { PropertyContactAccess } from "@/lib/models/PropertyContactAccess";
 import { getServerSession } from "@/lib/server/getSession";
 import { getDb } from "@/lib/server/db";
 import { internalServerError } from "@/lib/error";
+import { Role } from "@/lib/rbac";
 
 export async function POST(
   req: NextRequest,
@@ -23,6 +23,21 @@ export async function POST(
 
     const { id: propertyId } = await params;
     const userId = session.user.id;
+
+    const role = session.user.role as Role;
+
+    if (role === Role.ADMIN) {
+      return NextResponse.json(
+        {
+          success: true,
+          alreadyUnlocked: true,
+          hasAccess: true,
+          isAdmin: true,
+          message: "Admin has full access",
+        },
+        { status: 200 },
+      );
+    }
 
     await getDb();
 
@@ -51,9 +66,7 @@ export async function POST(
           paymentMethod: "esewa",
           credits: { $gt: 0 },
         },
-        // {
-        //   $inc: { credits: -1 },
-        // },
+        { $inc: { usedCredits: 1 } },
         {
           new: true,
           sort: { createdAt: 1 }, // oldest usable subscription first

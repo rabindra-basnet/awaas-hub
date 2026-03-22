@@ -41,8 +41,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
 
   return (
     <header className="sticky top-0 z-20 bg-background border-b">
-      <div className="p-4">
-        <div className="flex items-center justify-between pl-10">
+      <div className="px-4 lg:px-6 py-4">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div>
             <h1 className="text-3xl font-bold">{pageTitle}</h1>
             <p className="text-sm text-muted-foreground">

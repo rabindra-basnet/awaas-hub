@@ -255,9 +255,7 @@ export default function FavouriteDetailsCard({
             <Button
               className="flex-1 h-9 rounded-xl font-bold text-[10px] uppercase tracking-widest"
               onClick={() =>
-                router.push(
-                  `/dashboard/properties/${property._id}?from=favorites`,
-                )
+                router.push(`/properties/${property._id}?from=favorites`)
               }
             >
               View Details

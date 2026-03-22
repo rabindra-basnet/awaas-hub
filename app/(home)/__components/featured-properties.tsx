@@ -80,6 +80,7 @@ export default function FeaturedProperties({
                   src={getImageUrl(property)}
                   alt={property.title}
                   fill
+                  loading="eager"
                   className="object-cover transition-transform duration-500 group-hover:scale-110"
                 />
 

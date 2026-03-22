@@ -15,7 +15,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/server/db";
 
 /** Validates a boundary array — must be empty or have ≥3 [lat,lng] pairs */
-function validateBoundary(points: unknown): points is [number, number][] {
+export function validateBoundary(
+  points: unknown,
+): points is [number, number][] {
   if (!Array.isArray(points)) return true; // undefined/null → skip
   if (points.length === 0) return true; // empty array is valid (no boundary)
   if (points.length < 3) return false; // polygon needs at least 3 points

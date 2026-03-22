@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useRef, useState, useCallback } from "react";
+import { Suspense, use, useEffect, useRef, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -22,7 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useProperty } from "@/lib/client/queries/properties.queries";
 
-// ── Types ────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 interface VideoState {
   playing: boolean;
   muted: boolean;
@@ -36,21 +36,12 @@ interface VideoState {
   error: boolean;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function formatTime(seconds: number): string {
   if (isNaN(seconds)) return "0:00";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-/** Detects whether a resolved YouTube ID came from a Shorts URL */
-function isYouTubeShorts(url: string): boolean {
-  try {
-    return new URL(url).pathname.startsWith("/shorts/");
-  } catch {
-    return false;
-  }
 }
 
 function resolveVideoUrl(url: string): {
@@ -62,15 +53,12 @@ function resolveVideoUrl(url: string): {
     const parsed = new URL(url);
     const isShorts = parsed.pathname.startsWith("/shorts/");
 
-    // youtube.com/watch?v=…
-    // youtube.com/shorts/VIDEO_ID
-    // youtu.be/VIDEO_ID
     const ytId = parsed.hostname.includes("youtube.com")
       ? isShorts
-        ? parsed.pathname.split("/shorts/")[1]?.split("?")[0] // /shorts/VIDEO_ID
-        : parsed.searchParams.get("v") // /watch?v=VIDEO_ID
+        ? parsed.pathname.split("/shorts/")[1]?.split("?")[0]
+        : parsed.searchParams.get("v")
       : parsed.hostname === "youtu.be"
-        ? parsed.pathname.slice(1).split("?")[0] // youtu.be/VIDEO_ID
+        ? parsed.pathname.slice(1).split("?")[0]
         : null;
 
     if (ytId) {
@@ -81,7 +69,6 @@ function resolveVideoUrl(url: string): {
       };
     }
 
-    // Already an embed / Vimeo player URL
     if (
       parsed.pathname.includes("/embed/") ||
       parsed.hostname.includes("player.vimeo")
@@ -97,18 +84,27 @@ function resolveVideoUrl(url: string): {
 
 const DEFAULT_VIDEO_URL = "https://www.w3schools.com/html/mov_bbb.mp4";
 
-// ── Page ─────────────────────────────────────────────────────────────
-export default function VirtualTourPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+// ── Loading skeleton — shown by Suspense while params/searchParams resolve ────
+function TourSkeleton() {
+  return (
+    <div className="h-screen bg-black flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-10 h-10 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+        <p className="text-white/50 text-sm font-medium tracking-widest uppercase">
+          Preparing tour…
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Inner component — safe to call use() + useSearchParams() here because
+//    it is always rendered inside <Suspense> ───────────────────────────────────
+function TourContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-
-  // ✅ useSearchParams() returns a ReadonlyURLSearchParams — use .get()
   const searchParams = useSearchParams();
-  const urlFromQuery = searchParams.get("videourl"); // ?videourl=https://youtube.com/watch?v=…
+  const urlFromQuery = searchParams.get("videourl");
 
   const { data: property, isLoading } = useProperty(id);
 
@@ -116,7 +112,6 @@ export default function VirtualTourPage({
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── URL priority: ?videourl query param → property.videoUrl → property.tourUrl → default
   const rawUrl: string =
     urlFromQuery ||
     (property?.videoUrl as string | undefined) ||
@@ -142,7 +137,6 @@ export default function VirtualTourPage({
     error: false,
   });
 
-  // ── Auto-hide controls ───────────────────────────────────────────
   const resetControlsTimer = useCallback(() => {
     setVs((p) => ({ ...p, showControls: true }));
     if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
@@ -157,7 +151,6 @@ export default function VirtualTourPage({
     };
   }, []);
 
-  // ── Video event handlers ─────────────────────────────────────────
   const onTimeUpdate = () => {
     const v = videoRef.current;
     if (!v) return;
@@ -183,7 +176,6 @@ export default function VirtualTourPage({
   const onEnded = () =>
     setVs((p) => ({ ...p, playing: false, showControls: true }));
 
-  // ── Playback controls ────────────────────────────────────────────
   const togglePlay = () => {
     const v = videoRef.current;
     if (!v) return;
@@ -260,19 +252,8 @@ export default function VirtualTourPage({
     vs.duration > 0 ? (vs.currentTime / vs.duration) * 100 : 0;
   const bufferedPct = vs.duration > 0 ? (vs.buffered / vs.duration) * 100 : 0;
 
-  // ── Loading state ────────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <div className="h-screen bg-black flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-          <p className="text-white/50 text-sm font-medium tracking-widest uppercase">
-            Preparing tour…
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // While property data loads, show skeleton inside the Suspense boundary
+  if (isLoading) return <TourSkeleton />;
 
   const { title, location, price, area, category, face } = (property ?? {}) as {
     title?: string;
@@ -291,7 +272,7 @@ export default function VirtualTourPage({
       onTouchStart={resetControlsTimer}
       style={{ cursor: vs.showControls ? "default" : "none" }}
     >
-      {/* ── VIDEO / IFRAME ──────────────────────────────────────── */}
+      {/* ── VIDEO / IFRAME ── */}
       {videoType === "iframe" ? (
         <div
           className={cn(
@@ -303,7 +284,6 @@ export default function VirtualTourPage({
             src={resolvedSrc}
             className={cn(
               "border-0",
-              // Shorts are 9:16 portrait — constrain to a centred column
               isShorts
                 ? "h-full w-auto max-w-[min(100%,420px)] aspect-[9/16]"
                 : "absolute inset-0 w-full h-full",
@@ -329,14 +309,14 @@ export default function VirtualTourPage({
         />
       )}
 
-      {/* ── SPINNER ─────────────────────────────────────────────── */}
+      {/* ── SPINNER ── */}
       {vs.loading && videoType === "video" && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
           <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-white animate-spin" />
         </div>
       )}
 
-      {/* ── ERROR ───────────────────────────────────────────────── */}
+      {/* ── ERROR ── */}
       {vs.error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-black/80">
           <Video size={40} className="text-white/30 mb-3" />
@@ -349,7 +329,7 @@ export default function VirtualTourPage({
         </div>
       )}
 
-      {/* ── TOP CHROME ──────────────────────────────────────────── */}
+      {/* ── TOP CHROME ── */}
       <div
         className={cn(
           "absolute inset-x-0 top-0 z-40 transition-all duration-500",
@@ -359,7 +339,6 @@ export default function VirtualTourPage({
         )}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/30 to-transparent pointer-events-none" />
-
         <div className="relative flex items-center justify-between gap-4 px-5 py-4">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -379,7 +358,6 @@ export default function VirtualTourPage({
           </div>
 
           <div className="hidden sm:flex items-center gap-2 shrink-0">
-            {/* Badge shown when a custom URL was passed via query param */}
             {urlFromQuery && (
               <div className="flex items-center gap-1.5 bg-primary/20 backdrop-blur-sm border border-primary/30 rounded-full px-3 py-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -388,7 +366,6 @@ export default function VirtualTourPage({
                 </span>
               </div>
             )}
-            {/* Badge shown for YouTube Shorts */}
             {isShorts && (
               <div className="flex items-center gap-1.5 bg-red-500/20 backdrop-blur-sm border border-red-500/30 rounded-full px-3 py-1.5">
                 <span className="text-[10px] text-red-400 font-bold uppercase tracking-widest">
@@ -408,7 +385,7 @@ export default function VirtualTourPage({
         </div>
       </div>
 
-      {/* ── PROPERTY INFO STRIP (top-right) ─────────────────────── */}
+      {/* ── PROPERTY INFO STRIP ── */}
       <div
         className={cn(
           "absolute top-16 right-5 z-40 flex flex-col gap-2 transition-all duration-500",
@@ -447,7 +424,7 @@ export default function VirtualTourPage({
         )}
       </div>
 
-      {/* ── BIG PLAY button (video only, paused) ────────────────── */}
+      {/* ── BIG PLAY button ── */}
       {videoType === "video" && !vs.playing && !vs.loading && (
         <button
           onClick={togglePlay}
@@ -459,7 +436,7 @@ export default function VirtualTourPage({
         </button>
       )}
 
-      {/* ── BOTTOM CONTROLS (video only) ────────────────────────── */}
+      {/* ── BOTTOM CONTROLS ── */}
       {videoType === "video" && (
         <div
           className={cn(
@@ -470,7 +447,6 @@ export default function VirtualTourPage({
           )}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
-
           <div className="relative px-5 pb-6 pt-10 space-y-3">
             {/* Progress bar */}
             <div className="relative h-1 group cursor-pointer">
@@ -499,7 +475,6 @@ export default function VirtualTourPage({
 
             {/* Controls row */}
             <div className="flex items-center justify-between gap-4">
-              {/* Left: playback */}
               <div className="flex items-center gap-2">
                 <button
                   onClick={restart}
@@ -531,14 +506,12 @@ export default function VirtualTourPage({
                 </button>
               </div>
 
-              {/* Centre: timestamps */}
               <div className="text-[11px] font-mono text-white/60 font-medium tabular-nums">
                 {formatTime(vs.currentTime)}{" "}
                 <span className="text-white/30">/</span>{" "}
                 {formatTime(vs.duration)}
               </div>
 
-              {/* Right: volume + fullscreen */}
               <div className="flex items-center gap-2">
                 <button
                   onClick={toggleMute}
@@ -550,7 +523,6 @@ export default function VirtualTourPage({
                     <Volume2 size={14} className="text-white/70" />
                   )}
                 </button>
-
                 <div className="relative w-20 h-1">
                   <div className="absolute inset-0 bg-white/20 rounded-full" />
                   <div
@@ -567,7 +539,6 @@ export default function VirtualTourPage({
                     className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
                   />
                 </div>
-
                 <button
                   onClick={toggleFullscreen}
                   className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors"
@@ -584,7 +555,7 @@ export default function VirtualTourPage({
         </div>
       )}
 
-      {/* ── iframe fullscreen hint ───────────────────────────────── */}
+      {/* ── iframe fullscreen hint ── */}
       {videoType === "iframe" && vs.showControls && (
         <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-40">
           <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-4 py-2">
@@ -596,5 +567,19 @@ export default function VirtualTourPage({
         </div>
       )}
     </div>
+  );
+}
+
+// ── Page export — wraps TourContent in Suspense so Next.js SSR renders
+//    <Suspense> on the server and hydrates correctly on the client ──────────────
+export default function VirtualTourPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  return (
+    <Suspense fallback={<TourSkeleton />}>
+      <TourContent params={params} />
+    </Suspense>
   );
 }
