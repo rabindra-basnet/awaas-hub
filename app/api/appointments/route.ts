@@ -5,7 +5,6 @@ import { Appointment } from "@/lib/models/Appointment";
 import { unauthorized } from "@/lib/error";
 import { getSignedUrlForDownload } from "@/lib/server/r2-client";
 import Files from "@/lib/models/Files";
-// import { getSignedUrlForDownload } from "@/lib/server/storage";
 
 export async function GET() {
   const session = await getServerSession();
@@ -28,7 +27,7 @@ export async function GET() {
       if (propertyId) {
         // 🔥 find first file linked to this property
         const file = await Files.findOne({
-          attached_to_id: propertyId, // 👈 adjust field if needed
+          propertyId,
         })
           .sort({ createdAt: 1 }) // first image
           .lean();
@@ -50,21 +49,3 @@ export async function GET() {
     data: enrichedAppointments,
   });
 }
-
-// // export async function POST(req: Request) {
-// //   const session = await getServerSession();
-// //   if (!session) return unauthorized();
-
-// //   requirePermission(session.user.role as Role, Permission.MANAGE_APPOINTMENTS);
-// //   const body = await req.json();
-
-// //   console.log(`Body from the post ${body}`);
-
-// //   const appointment = await Appointment.create({
-// //     ...body,
-// //     createdBy: session.user.id,
-// //     participants: [session.user.id, body.buyerId],
-// //   });
-
-// //   return NextResponse.json(appointment);
-// // }
