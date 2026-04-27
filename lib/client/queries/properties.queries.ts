@@ -102,7 +102,26 @@ export const useToggleFavorite = () =>
       if (!res.ok) throw new Error("Failed to toggle favorite");
       return res.json();
     },
-    onSuccess: (_, { propertyId }) => {
+    onMutate: async ({ propertyId, isFav }) => {
+      await queryClient.cancelQueries({ queryKey: propertyKeys.all });
+      const snapshot = queryClient.getQueriesData({ queryKey: propertyKeys.all });
+      queryClient.setQueriesData(
+        { queryKey: propertyKeys.all },
+        (old: any[] | undefined) =>
+          old?.map((p) =>
+            p._id === propertyId ? { ...p, isFavorite: !isFav } : p,
+          ) ?? old,
+      );
+      return { snapshot };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.snapshot) {
+        for (const [key, data] of context.snapshot) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+    },
+    onSettled: (_, __, { propertyId }) => {
       queryClient.invalidateQueries({ queryKey: propertyKeys.all });
       queryClient.invalidateQueries({
         queryKey: propertyKeys.detail(propertyId),
