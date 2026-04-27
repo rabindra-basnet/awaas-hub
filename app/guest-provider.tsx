@@ -17,6 +17,7 @@ export function AnonymousProvider({ children }: Props) {
       console.error("Anonymous sign-in error:", error);
     },
   });
+  console.log(signInAnonymously);
 
   useEffect(() => {
     if (isPending) return;

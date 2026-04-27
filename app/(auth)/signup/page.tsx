@@ -82,7 +82,9 @@ export default function SignupPage() {
           },
           {
             onSuccess: () => {
-              toast.success("Signed up successfully!");
+              toast.success(
+                "Signed up successfully!. Please check your email for verification.",
+              );
               router.replace("/login");
             },
             onError(ctx: any) {

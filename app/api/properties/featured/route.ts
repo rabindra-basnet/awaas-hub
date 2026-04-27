@@ -14,7 +14,7 @@ export async function GET() {
   try {
     await getDb();
 
-    const properties = await Property.find({})
+    const properties = await Property.find({ verificationStatus: "verified" })
       .sort({ createdAt: -1 })
       .limit(3)
       .lean();

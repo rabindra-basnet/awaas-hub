@@ -55,6 +55,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   [Role.BUYER]: [
     Permission.VIEW_PROPERTIES,
     Permission.VIEW_FAVORITES,
+    Permission.MANAGE_PROPERTIES,
     // Permission.VIEW_APPOINTMENTS,
     Permission.MANAGE_APPOINTMENTS,
     Permission.VIEW_PROFILE,

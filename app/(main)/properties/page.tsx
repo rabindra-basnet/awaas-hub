@@ -45,6 +45,8 @@ export default function PropertiesPage() {
 
   const { data: session, isPending: isSessionLoading } = useSession();
 
+  console.log(session);
+
   const isAnonymous = session?.user?.isAnonymous === true;
 
   const canManage =

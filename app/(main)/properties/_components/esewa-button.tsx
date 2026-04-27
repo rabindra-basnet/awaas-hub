@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Info, InfoIcon } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 
 interface Props {
   propertyId: string;
@@ -67,13 +74,24 @@ export default function EsewaPaymentButton({ propertyId }: Props) {
   };
 
   return (
-    <Button
-      onClick={handlePayment}
-      variant="secondary"
-      disabled={isLoading}
-      className="w-full h-12 rounded-xl font-bold text-sm border-2"
-    >
-      {isLoading ? "Processing..." : "Unlock Contact Details"}
-    </Button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            onClick={handlePayment}
+            variant="secondary"
+            disabled={isLoading}
+            className="w-full h-12 rounded-xl font-bold text-sm border-2 flex items-center gap-2"
+          >
+            {isLoading ? "Processing..." : "Unlock Contact Details"}
+            <InfoIcon size={16} />
+          </Button>
+        </TooltipTrigger>
+
+        <TooltipContent>
+          <p>Pay to unlock seller contact details</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

@@ -80,6 +80,11 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+
+.leaflet-container {
+  transition: filter 0.3s ease;
+}
+
 @theme inline {
   --font-sans: var(--font-sans);
   --font-mono: "Geist Mono", "Geist Mono Fallback";

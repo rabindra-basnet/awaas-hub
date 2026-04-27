@@ -6,6 +6,7 @@ import { queryClient } from "@/lib/client/query-client";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { AnonymousProvider } from "./guest-provider";
+import AblyProvider from "./ably-provider";
 
 export default function Providers({
   children,
@@ -22,7 +23,11 @@ export default function Providers({
       >
         <QueryClientProvider client={queryClient}>
           <Toaster />
-          <AnonymousProvider>{children}</AnonymousProvider>
+          {/*<AnonymousProvider>*/}
+          {/* <AblyProvider> */}
+          {children}
+          {/* </AblyProvider> */}
+          {/*</AnonymousProvider>*/}
         </QueryClientProvider>
       </ThemeProvider>
     </>

@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getServerSession } from "@/lib/server/getSession";
 import { hasPermission, Permission, Role } from "@/lib/rbac";
@@ -7,7 +6,8 @@ import { Property } from "@/lib/models/Property";
 import Files from "@/lib/models/Files";
 import { getSignedUrlForDownload } from "@/lib/server/r2-client";
 import PropertyPageClient from "./property-page-client";
-import PropertyPageSkeleton from "./property-page-skeleton";
+// import PropertyPageClient from "./_components/property-page-client";
+// import PropertyPageSkeleton from "./_components/property-page-skeleton";
 
 async function getPropertyWithImages(id: string) {
   await getDb();

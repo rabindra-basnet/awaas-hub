@@ -270,9 +270,9 @@ export async function GET() {
       : []),
     {
       label: "Revenue (MTD)",
-      value: "$284.5K",
+      value: "NPR0.00",
       icon: "DollarSign",
-      change: "+15.3%", // wire up to your payments model
+      change: "0.00%", // wire up to your payments model
     },
   ];
 
