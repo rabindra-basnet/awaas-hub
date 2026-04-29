@@ -142,23 +142,18 @@ export default function AdminUsersPage() {
           </div>
         ) : (
           <>
-            {/* Sticky header + scrollable body */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-border/60 bg-muted/30">
-                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">User</th>
-                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Role</th>
-                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Status</th>
-                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Joined</th>
-                    <th className="px-4 py-3 w-12" />
+            {/* Single table — wrapper scrolls, thead stays sticky */}
+            <div className="overflow-auto max-h-[520px]">
+              <table className="w-full text-sm min-w-[640px]">
+                <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur-sm">
+                  <tr className="border-b border-border/60">
+                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider w-[40%]">User</th>
+                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider w-[12%]">Role</th>
+                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider w-[14%]">Status</th>
+                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider w-[22%]">Joined</th>
+                    <th className="px-4 py-3 w-[12%]" />
                   </tr>
                 </thead>
-              </table>
-            </div>
-            {/* Scrollable body only */}
-            <div className="overflow-y-auto max-h-[480px]">
-              <table className="w-full text-sm">
                 <tbody className="divide-y divide-border/40">
                   {filtered.map((user) => (
                     <UserRow key={user.id} user={user} onAction={(type) => setDialog({ type, user } as ActiveDialog)} />
@@ -254,14 +249,14 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: (type: "role" 
           {user.role}
         </Badge>
       </td>
-      <td className="px-4 py-3 hidden sm:table-cell">
+      <td className="px-4 py-3">
         {user.banned ? (
           <span className="flex items-center gap-1.5 text-xs font-medium text-destructive"><XCircle className="h-3.5 w-3.5" />Banned</span>
         ) : (
           <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" />Active</span>
         )}
       </td>
-      <td className="px-4 py-3 hidden md:table-cell">
+      <td className="px-4 py-3">
         <span className="text-xs text-muted-foreground">{format(new Date(user.createdAt), "MMM d, yyyy")}</span>
       </td>
       <td className="px-4 py-3">
