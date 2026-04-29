@@ -7,18 +7,16 @@ import {
   MapPin,
   Banknote,
   Eye,
-  CalendarCheck,
   Info,
   MoreHorizontal,
   Pencil,
   Heart,
   ChevronLeft,
   ChevronRight,
-  Delete,
+  Tag,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +27,6 @@ import {
 import { cn } from "@/lib/utils";
 import DeletePropertyDialog from "./delete-property";
 import Link from "next/link";
-import { is } from "zod/v4/locales";
 
 interface PropertyListCardProps {
   property: any;
@@ -86,16 +83,16 @@ export default function PropertyListCard({
 
   // console.log("Hello favorite", isFavorite);
 
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case "sold":
-        return "bg-red-50 text-red-700 border-red-200";
-      case "booked":
-        return "bg-amber-50 text-amber-700 border-amber-200";
-      default:
-        return "bg-emerald-50 text-emerald-700 border-emerald-200";
-    }
+  const isSold = property.status?.toLowerCase() === "sold";
+  const isBooked = property.status?.toLowerCase() === "booked";
+
+  const statusConfig = {
+    sold: { label: "Sold", classes: "bg-red-500/10 text-red-600 border-red-200 dark:text-red-400" },
+    booked: { label: "Booked", classes: "bg-amber-500/10 text-amber-600 border-amber-200 dark:text-amber-400" },
+    available: { label: "Available", classes: "bg-emerald-500/10 text-emerald-600 border-emerald-200 dark:text-emerald-400" },
   };
+  const statusKey = isSold ? "sold" : isBooked ? "booked" : "available";
+  const status = statusConfig[statusKey];
 
   return (
     <Card className="group overflow-hidden rounded-3xl border border-border/60 shadow-sm hover:shadow-md transition-all duration-300 bg-card p-3">
@@ -242,53 +239,52 @@ export default function PropertyListCard({
       </div>
 
       {/* ── CARD BODY ── */}
-      <CardContent className="p-0 pt-3 flex flex-col gap-2.5">
-        <div className="bg-muted/30 p-2.5 rounded-xl border border-border/40">
-          <h3 className="font-bold text-xs tracking-wide line-clamp-1 text-foreground uppercase">
+      <CardContent className="p-0 pt-3 flex flex-col gap-2">
+        {/* Title + status */}
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-bold text-xs tracking-wide line-clamp-1 text-foreground flex-1">
             {property.title}
           </h3>
-        </div>
-
-        <div className="bg-muted/30 p-2.5 rounded-xl border border-border/40 flex items-center">
-          <MapPin size={14} className="mr-2 text-destructive shrink-0" />
-          <span className="text-[11px] font-bold truncate uppercase text-muted-foreground">
-            {property.location}
-          </span>
-        </div>
-
-        <div className="bg-muted/30 p-2.5 rounded-xl border border-border/40 flex items-center">
-          <Banknote size={14} className="mr-2 text-primary shrink-0" />
-          <span className="text-[11px] font-black text-primary uppercase truncate">
-            NPR. {new Intl.NumberFormat("en-IN").format(property.price)}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant="outline"
-            className="h-10 rounded-xl font-bold text-[10px] uppercase tracking-wider border"
-            onClick={() => router.push(`/properties/${property._id}`)}
-          >
-            <Eye size={14} className="mr-2" /> View
-          </Button>
-          <div
+          <span
             className={cn(
-              "flex items-center justify-center rounded-xl border text-[9px] font-black uppercase tracking-tighter text-center px-1",
-              getStatusColor(property.status),
+              "shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold",
+              status.classes,
             )}
           >
-            <Info size={12} className="mr-1.5" />{" "}
-            {property.status || "Available"}
+            <Tag size={9} />
+            {status.label}
+          </span>
+        </div>
+
+        {/* Sold overlay info */}
+        {isSold && (
+          <div className="rounded-xl bg-red-500/8 border border-red-200/60 dark:border-red-800/40 px-3 py-2 flex items-center gap-2">
+            <Info size={12} className="text-red-500 shrink-0" />
+            <span className="text-[11px] text-red-600 dark:text-red-400 font-semibold">
+              This property has been sold
+            </span>
           </div>
+        )}
+
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <MapPin size={12} className="text-destructive shrink-0" />
+          <span className="truncate font-medium">{property.location}</span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <Banknote size={12} className="text-primary shrink-0" />
+          <span className="text-[12px] font-black text-primary">
+            NPR {new Intl.NumberFormat("en-IN").format(property.price)}
+          </span>
         </div>
 
         <Button
-          className="w-full h-11 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-sm mt-0.5"
-          onClick={() =>
-            router.push(`/appointments/new?propertyId=${property._id}`)
-          }
+          variant={isSold ? "outline" : "default"}
+          className="w-full h-9 rounded-xl font-bold text-[11px] mt-1"
+          onClick={() => router.push(`/properties/${property._id}`)}
         >
-          <CalendarCheck size={14} className="mr-2" /> Book Now
+          <Eye size={13} className="mr-1.5" />
+          {isSold ? "View Details" : "View Property"}
         </Button>
       </CardContent>
     </Card>

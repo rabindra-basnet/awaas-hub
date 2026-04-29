@@ -132,10 +132,8 @@ export const useToggleFavorite = () =>
 /* ======================
    CREATE
 ====================== */
-export const useCreateProperty = () => {
-  const toggleFav = useToggleFavorite();
-
-  return useMutation({
+export const useCreateProperty = () =>
+  useMutation({
     mutationFn: async (data: PropertyForm & { fileIds: string[] }) => {
       const res = await fetch("/api/properties/new", {
         method: "POST",
@@ -145,16 +143,13 @@ export const useCreateProperty = () => {
       if (!res.ok) throw new Error("Failed to create property");
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       getQueryClient().invalidateQueries({
         queryKey: propertyKeys.all,
         exact: false,
       });
-      // initialise favorite record on backend
-      toggleFav.mutate({ propertyId: data.property._id, isFav: false });
     },
   });
-};
 
 /* ======================
    UPDATE
