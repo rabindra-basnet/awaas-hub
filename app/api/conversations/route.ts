@@ -1,13 +1,10 @@
-// app/api/conversations/route.ts  — replace existing POST with this version
-// which broadcasts the new message to SSE clients after saving
-
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/server/getSession";
 import { Conversation, Message } from "@/lib/models/Conversation";
 import { Property } from "@/lib/models/Property";
 import { unauthorized, internalServerError } from "@/lib/error";
 import { getDb } from "@/lib/server/db";
-import { broadcastToConversation } from "./[id]/stream/route";
+import { broadcastPropertyMessage } from "@/lib/server/supabase";
 
 /**
  * GET /api/conversations?propertyId=xxx
@@ -150,17 +147,8 @@ export async function POST(req: Request) {
 
     const msgObj = message.toObject();
 
-    // Broadcast to all SSE clients in this conversation
-    broadcastToConversation(conversation._id.toString(), {
-      type: "message",
+    await broadcastPropertyMessage(conversation._id.toString(), {
       message: msgObj,
-    });
-
-    // Stop typing indicator
-    broadcastToConversation(conversation._id.toString(), {
-      type: "typing",
-      senderId: userId,
-      isTyping: false,
     });
 
     return NextResponse.json({ message: msgObj }, { status: 201 });

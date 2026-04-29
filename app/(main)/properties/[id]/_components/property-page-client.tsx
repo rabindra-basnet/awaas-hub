@@ -50,6 +50,7 @@ import VerifyPropertyDialog from "../../_components/verify-property-dialog";
 import DeletePropertyDialog from "../../_components/delete-property";
 import EsewaPaymentButton from "../../_components/esewa-button";
 import PropertyPageSkeleton from "./property-page-skeleton";
+import FloatingChat from "../../_components/FloatingChat";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -655,6 +656,15 @@ export function PropertyPageInner({
             </div>
           </div>
         </div>
+
+        {/* ── Floating support chat — buyers/sellers can contact admin ── */}
+        {!isGuest && !isAdmin && (
+          <FloatingChat
+            propertyId={id}
+            propertyTitle={title ?? "Property"}
+            currentUserId={session?.user?.id ?? ""}
+          />
+        )}
 
         {/* ── Bottom sections ── */}
         {!isAnonymous && (

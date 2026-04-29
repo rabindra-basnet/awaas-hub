@@ -4,9 +4,9 @@ import {
   useQuery,
   useMutation,
   useQueryClient,
-  useInfiniteQuery,
 } from "@tanstack/react-query";
 import { useEffect, useRef, useCallback } from "react";
+import { supabase } from "@/lib/supabase";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface ChatMessage {
@@ -118,17 +118,21 @@ export function useSendMessage(propertyId: string) {
     },
 
     onSuccess: (data) => {
-      // Replace optimistic message with real one
       queryClient.setQueryData<ConversationData>(
         ["conversation", propertyId],
         (old) => {
           if (!old) return old;
+          const withoutOptimistic = old.messages.filter(
+            (m) => !m._id.startsWith("optimistic-"),
+          );
+          const alreadyExists = withoutOptimistic.some(
+            (m) => m._id === data.message._id,
+          );
           return {
             ...old,
-            messages: [
-              ...old.messages.filter((m) => !m._id.startsWith("optimistic-")),
-              data.message,
-            ],
+            messages: alreadyExists
+              ? withoutOptimistic
+              : [...withoutOptimistic, data.message],
           };
         },
       );
@@ -161,8 +165,8 @@ export function useSendTyping(conversationId: string | undefined) {
   return { onKeyPress, sendTyping };
 }
 
-// ── SSE subscription ──────────────────────────────────────────────────────────
-export function useChatSSE(
+// ── Supabase Realtime subscription ───────────────────────────────────────────
+export function usePropertyChatChannel(
   conversationId: string | undefined,
   propertyId: string,
   onTyping: (data: {
@@ -173,23 +177,23 @@ export function useChatSSE(
 ) {
   const queryClient = useQueryClient();
 
+  const stableOnTyping = useCallback(onTyping, []);  // eslint-disable-line
+
   useEffect(() => {
     if (!conversationId) return;
 
-    const es = new EventSource(`/api/conversations/${conversationId}/stream`);
-
-    es.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        if (data.type === "message") {
-          // Append real message, remove any optimistic duplicate
+    const channel = supabase
+      .channel(`property-${conversationId}`)
+      .on(
+        "broadcast",
+        { event: "new-message" },
+        ({ payload }: { payload: { message: ChatMessage } }) => {
           queryClient.setQueryData<ConversationData>(
             ["conversation", propertyId],
             (old) => {
               if (!old) return old;
               const alreadyExists = old.messages.some(
-                (m) => m._id === data.message._id,
+                (m) => m._id === payload.message._id,
               );
               if (alreadyExists) return old;
               return {
@@ -198,31 +202,32 @@ export function useChatSSE(
                   ...old.messages.filter(
                     (m) => !m._id.startsWith("optimistic-"),
                   ),
-                  data.message,
+                  payload.message,
                 ],
               };
             },
           );
-        }
-
-        if (data.type === "typing") {
-          onTyping({
-            senderId: data.senderId,
-            senderName: data.senderName,
-            isTyping: data.isTyping,
-          });
-        }
-      } catch {
-        // ignore parse errors
-      }
-    };
-
-    es.onerror = () => {
-      // SSE will auto-reconnect; no action needed
-    };
+        },
+      )
+      .on(
+        "broadcast",
+        { event: "typing" },
+        ({
+          payload,
+        }: {
+          payload: {
+            senderId: string;
+            senderName: string;
+            isTyping: boolean;
+          };
+        }) => {
+          stableOnTyping(payload);
+        },
+      )
+      .subscribe();
 
     return () => {
-      es.close();
+      supabase.removeChannel(channel);
     };
-  }, [conversationId, propertyId, queryClient, onTyping]);
+  }, [conversationId, propertyId, queryClient, stableOnTyping]);
 }

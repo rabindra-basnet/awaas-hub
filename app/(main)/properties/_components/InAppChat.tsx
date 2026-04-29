@@ -12,7 +12,7 @@ import {
   useConversation,
   useSendMessage,
   useSendTyping,
-  useChatSSE,
+  usePropertyChatChannel,
   type ChatMessage,
 } from "@/lib/client/queries/chat.queries";
 
@@ -220,8 +220,7 @@ export default function InAppChat({
     [currentUserId],
   );
 
-  // SSE connection
-  useChatSSE(data?.conversation._id, propertyId, handleTyping);
+  usePropertyChatChannel(data?.conversation._id, propertyId, handleTyping);
 
   // Mark as connected once conversation loads
   useEffect(() => {

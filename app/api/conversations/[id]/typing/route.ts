@@ -4,12 +4,12 @@ import { getServerSession } from "@/lib/server/getSession";
 import { Conversation } from "@/lib/models/Conversation";
 import { unauthorized, forbidden } from "@/lib/error";
 import { getDb } from "@/lib/server/db";
-import { broadcastToConversation } from "../stream/route";
+import { broadcastPropertyTyping } from "@/lib/server/supabase";
 
 /**
  * POST /api/conversations/[id]/typing
  * Body: { isTyping: boolean }
- * Broadcasts typing indicator to all other SSE clients in the conversation.
+ * Broadcasts typing indicator via Supabase Realtime.
  */
 export async function POST(
   req: Request,
@@ -32,9 +32,7 @@ export async function POST(
     conversation.buyerId === userId || conversation.sellerId === userId;
   if (!isMember) return forbidden();
 
-  // Broadcast typing event to other participants
-  broadcastToConversation(convId, {
-    type: "typing",
+  await broadcastPropertyTyping(convId, {
     senderId: userId,
     senderName: session.user.name ?? "User",
     isTyping,

@@ -56,6 +56,7 @@ import VerifyPropertyDialog from "../_components/verify-property-dialog";
 import PropertyPageSkeleton from "./_components/property-page-skeleton";
 import PropertyNotFound from "./_components/property-not-found";
 import PropertyError from "./_components/property-error";
+import FloatingChat from "../_components/FloatingChat";
 import {
   Tooltip,
   TooltipContent,
@@ -700,6 +701,15 @@ export default function PropertyPage({
             </div>
           </div>
         </div>
+
+        {/* ── Floating support chat — buyers/sellers contact admin ── */}
+        {!isGuest && !isAdmin && (
+          <FloatingChat
+            propertyId={id}
+            propertyTitle={title ?? "Property"}
+            currentUserId={session?.user?.id ?? ""}
+          />
+        )}
 
         {/* ── BOTTOM SECTIONS ── */}
         {!isAnonymous && (

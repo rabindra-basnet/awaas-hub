@@ -80,9 +80,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen w-full">
         {/* Only show sidebar to registered users */}
         {session && !isAnonymous && <AppSidebar session={session} />}
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col min-h-0">
           <DashboardHeader />
-          <div className="w-full overflow-auto">{children}</div>
+          <div className="flex-1 min-h-0 overflow-auto">{children}</div>
         </main>
       </div>
     </SidebarProvider>
