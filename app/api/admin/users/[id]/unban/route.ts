@@ -27,3 +27,4 @@ export async function POST(_req: Request, { params }: Params) {
     return internalServerError();
   }
 }
+

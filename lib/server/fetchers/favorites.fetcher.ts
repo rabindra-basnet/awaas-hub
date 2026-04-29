@@ -11,7 +11,10 @@ export async function fetchFavorites(session: Session): Promise<any[]> {
 
   const role = session.user.role as Role;
   if (
-    !hasAnyPermission(role, [Permission.VIEW_FAVORITES, Permission.MANAGE_FAVORITES])
+    !hasAnyPermission(role, [
+      Permission.VIEW_FAVORITES,
+      Permission.MANAGE_FAVORITES,
+    ])
   ) {
     return [];
   }
@@ -45,9 +48,10 @@ export async function fetchFavorites(session: Session): Promise<any[]> {
     properties.map(async (property: any) => {
       const propertyId = property._id.toString();
       const firstFile = firstFileByProperty.get(propertyId);
-      if (!firstFile?.storedName) return { ...property, images: [] };
+      if (!firstFile?.storedName)
+        return JSON.parse(JSON.stringify({ ...property, images: [] }));
       const imageUrl = await getSignedUrlForDownload(firstFile.storedName);
-      return { ...property, images: [imageUrl] };
+      return JSON.parse(JSON.stringify({ ...property, images: [imageUrl] }));
     }),
   );
 }

@@ -1,5 +1,5 @@
 import { queryOptions, useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/client/query-client";
+import { getQueryClient } from "@/lib/query-client";
 import { FeaturedProperty } from "@/app/(home)/__components/featured-properties";
 
 /* ======================
@@ -103,9 +103,9 @@ export const useToggleFavorite = () =>
       return res.json();
     },
     onMutate: async ({ propertyId, isFav }) => {
-      await queryClient.cancelQueries({ queryKey: propertyKeys.all });
-      const snapshot = queryClient.getQueriesData({ queryKey: propertyKeys.all });
-      queryClient.setQueriesData(
+      await getQueryClient().cancelQueries({ queryKey: propertyKeys.all });
+      const snapshot = getQueryClient().getQueriesData({ queryKey: propertyKeys.all });
+      getQueryClient().setQueriesData(
         { queryKey: propertyKeys.all },
         (old: any[] | undefined) =>
           old?.map((p) =>
@@ -117,13 +117,13 @@ export const useToggleFavorite = () =>
     onError: (_err, _vars, context) => {
       if (context?.snapshot) {
         for (const [key, data] of context.snapshot) {
-          queryClient.setQueryData(key, data);
+          getQueryClient().setQueryData(key, data);
         }
       }
     },
     onSettled: (_, __, { propertyId }) => {
-      queryClient.invalidateQueries({ queryKey: propertyKeys.all });
-      queryClient.invalidateQueries({
+      getQueryClient().invalidateQueries({ queryKey: propertyKeys.all });
+      getQueryClient().invalidateQueries({
         queryKey: propertyKeys.detail(propertyId),
       });
     },
@@ -146,7 +146,7 @@ export const useCreateProperty = () => {
       return res.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({
+      getQueryClient().invalidateQueries({
         queryKey: propertyKeys.all,
         exact: false,
       });
@@ -177,9 +177,9 @@ export const useUpdateProperty = () =>
       return res.json();
     },
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: propertyKeys.all });
-      queryClient.invalidateQueries({ queryKey: propertyKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: propertyKeys.images(id) });
+      getQueryClient().invalidateQueries({ queryKey: propertyKeys.all });
+      getQueryClient().invalidateQueries({ queryKey: propertyKeys.detail(id) });
+      getQueryClient().invalidateQueries({ queryKey: propertyKeys.images(id) });
     },
   });
 
@@ -194,9 +194,9 @@ export const useDeleteProperty = () =>
       return res.json();
     },
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: propertyKeys.all });
-      queryClient.removeQueries({ queryKey: propertyKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: propertyKeys.images(id) });
+      getQueryClient().invalidateQueries({ queryKey: propertyKeys.all });
+      getQueryClient().removeQueries({ queryKey: propertyKeys.detail(id) });
+      getQueryClient().invalidateQueries({ queryKey: propertyKeys.images(id) });
     },
   });
 

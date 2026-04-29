@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { getQueryClient } from "@/lib/server/query-client";
+import { getQueryClient } from "@/lib/query-client";
 import { getServerSession } from "@/lib/server/getSession";
 import { fetchProperties } from "@/lib/server/fetchers/properties.fetcher";
 import { propertyKeys } from "@/lib/client/queries/properties.queries";

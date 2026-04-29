@@ -1,14 +1,2 @@
-import { QueryClient } from "@tanstack/react-query";
-import { cache } from "react";
-
-export const getQueryClient = cache(
-  () =>
-    new QueryClient({
-      defaultOptions: {
-        queries: {
-          staleTime: 60 * 1000,
-          retry: 1,
-        },
-      },
-    }),
-);
+// Re-exported from the unified query client
+export { getQueryClient } from "@/lib/query-client";

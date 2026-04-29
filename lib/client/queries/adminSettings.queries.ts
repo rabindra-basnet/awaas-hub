@@ -1,4 +1,4 @@
-import { queryClient } from "@/lib/client/query-client";
+import { getQueryClient } from "@/lib/query-client";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -41,7 +41,7 @@ export function useCreateUser() {
     },
     onSuccess: () => {
       toast.success("User created");
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      getQueryClient().invalidateQueries({ queryKey: ["admin-users"] });
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -66,7 +66,7 @@ export function useUpdateUser() {
     },
     onSuccess: () => {
       toast.success("User updated");
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      getQueryClient().invalidateQueries({ queryKey: ["admin-users"] });
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -82,7 +82,7 @@ export function useDeleteUser() {
     },
     onSuccess: () => {
       toast.success("User deleted");
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      getQueryClient().invalidateQueries({ queryKey: ["admin-users"] });
     },
     onError: (err: any) => toast.error(err.message),
   });

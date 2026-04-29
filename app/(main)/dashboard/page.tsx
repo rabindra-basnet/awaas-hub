@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-import { getQueryClient } from "@/lib/server/query-client";
+import { getQueryClient } from "@/lib/query-client";
 import { getServerSession } from "@/lib/server/getSession";
 import { fetchDashboardData } from "@/lib/server/fetchers/dashboard.fetcher";
 import DashboardContent from "./_components/dashboard-content";

@@ -94,7 +94,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/server/getSession";
 import { Property } from "@/lib/models/Property";
-import { Appointment } from "@/lib/models/Appointment";
 import Files from "@/lib/models/Files";
 import { getSignedUrlForDownload } from "@/lib/server/r2-client";
 import { Role, Permission, requirePermission } from "@/lib/rbac";
@@ -128,12 +127,6 @@ export async function GET() {
 
   // ── Date ranges ─────────────────────────────────────────────────────────────
   const now = new Date();
-
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-  const endOfToday = new Date(now);
-  endOfToday.setHours(23, 59, 59, 999);
-
   const thisMonth = monthRange(now.getFullYear(), now.getMonth());
   const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const lastMonth = monthRange(
@@ -143,26 +136,6 @@ export async function GET() {
 
   // ── Role-based queries ──────────────────────────────────────────────────────
   const propertyQuery = role === Role.SELLER ? { sellerId: userId } : {};
-
-  const sellerPropertyIds =
-    role === Role.SELLER
-      ? await Property.find({ sellerId: userId })
-          .select("_id")
-          .lean()
-          .then((p) => p.map((p) => p._id.toString()))
-      : [];
-
-  let appointmentQuery: any = {};
-  if (role === Role.SELLER) {
-    appointmentQuery.$or = [
-      { createdBy: userId },
-      { propertyId: { $in: sellerPropertyIds } },
-    ];
-    appointmentQuery.date = { $gte: startOfToday, $lte: endOfToday };
-  } else if (role === Role.BUYER) {
-    appointmentQuery.createdBy = userId;
-    appointmentQuery.date = { $gte: startOfToday, $lte: endOfToday };
-  }
 
   // ── Recent properties with first image ─────────────────────────────────────
   const recentPropertiesRaw = await Property.find(propertyQuery)
@@ -209,7 +182,6 @@ export async function GET() {
       status: "available",
       createdAt: { $gte: lastMonth.start, $lte: lastMonth.end },
     }),
-    Appointment.find(appointmentQuery).sort({ date: 1 }).limit(4).lean(),
   ] as const);
 
   // ── Admin-only user queries ─────────────────────────────────────────────────
@@ -238,7 +210,6 @@ export async function GET() {
       activeListings,
       activeListingsThisMonth,
       activeListingsLastMonth,
-      todaysAppointments,
     ],
     [totalUsers, usersThisMonth, usersLastMonth],
   ] = await Promise.all([baseQueries, adminQueries]);
@@ -276,9 +247,5 @@ export async function GET() {
     },
   ];
 
-  return NextResponse.json({
-    stats,
-    recentProperties,
-    todaysSchedule: todaysAppointments,
-  });
+  return NextResponse.json({ stats, recentProperties });
 }

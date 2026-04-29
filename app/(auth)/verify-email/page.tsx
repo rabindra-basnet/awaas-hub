@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/client/auth-client";
 
-export default function VerifyEmailPage() {
+function VerifyEmailInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -47,13 +47,11 @@ export default function VerifyEmailPage() {
         {status === "loading" && (
           <p className="text-gray-600">Verifying your email...</p>
         )}
-
         {status === "success" && (
           <p className="text-green-600 font-medium">
-            Email verified successfully 🎉 Redirecting...
+            Email verified successfully! Redirecting...
           </p>
         )}
-
         {status === "error" && (
           <p className="text-red-600 font-medium">
             Verification failed or link expired.
@@ -61,5 +59,19 @@ export default function VerifyEmailPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="w-[340px] rounded-xl bg-white p-6 shadow text-center">
+          <p className="text-gray-600">Verifying your email...</p>
+        </div>
+      </div>
+    }>
+      <VerifyEmailInner />
+    </Suspense>
   );
 }

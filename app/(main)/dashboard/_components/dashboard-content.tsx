@@ -4,7 +4,6 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Home, Building2, Users, DollarSign } from "lucide-react";
 import StatsGrid from "./stat-card";
 import RecentPropertiesCard from "./recent-properties-card";
-import TodayScheduleCard from "./today-schedule-card";
 import { dashboardQuery } from "@/lib/client/queries/dashboard.queries";
 
 const ICONMAP = {
@@ -26,10 +25,7 @@ export default function DashboardContent() {
     <div className="flex-1 overflow-y-auto">
       <div className="bg-background px-6 py-6 space-y-8">
         <StatsGrid stats={stats} />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <RecentPropertiesCard properties={dashboard.recentProperties} />
-          <TodayScheduleCard schedule={dashboard.todaysSchedule} />
-        </div>
+        <RecentPropertiesCard properties={dashboard.recentProperties} />
       </div>
     </div>
   );

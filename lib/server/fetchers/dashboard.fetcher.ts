@@ -1,5 +1,4 @@
 import { Property } from "@/lib/models/Property";
-import { Appointment } from "@/lib/models/Appointment";
 import Files from "@/lib/models/Files";
 import { getSignedUrlForDownload } from "@/lib/server/r2-client";
 import { Role } from "@/lib/rbac";
@@ -29,11 +28,6 @@ export async function fetchDashboardData(
   const isAdmin = role === Role.ADMIN;
 
   const now = new Date();
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-  const endOfToday = new Date(now);
-  endOfToday.setHours(23, 59, 59, 999);
-
   const thisMonth = monthRange(now.getFullYear(), now.getMonth());
   const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const lastMonth = monthRange(
@@ -42,26 +36,6 @@ export async function fetchDashboardData(
   );
 
   const propertyQuery = role === Role.SELLER ? { sellerId: userId } : {};
-
-  const sellerPropertyIds =
-    role === Role.SELLER
-      ? await Property.find({ sellerId: userId })
-          .select("_id")
-          .lean()
-          .then((p) => p.map((p) => p._id.toString()))
-      : [];
-
-  let appointmentQuery: any = {};
-  if (role === Role.SELLER) {
-    appointmentQuery.$or = [
-      { createdBy: userId },
-      { propertyId: { $in: sellerPropertyIds } },
-    ];
-    appointmentQuery.date = { $gte: startOfToday, $lte: endOfToday };
-  } else if (role === Role.BUYER) {
-    appointmentQuery.createdBy = userId;
-    appointmentQuery.date = { $gte: startOfToday, $lte: endOfToday };
-  }
 
   const recentPropertiesRaw = await Property.find(propertyQuery)
     .sort({ createdAt: -1 })
@@ -93,7 +67,6 @@ export async function fetchDashboardData(
       activeListings,
       activeListingsThisMonth,
       activeListingsLastMonth,
-      todaysAppointments,
     ],
     [totalUsers, usersThisMonth, usersLastMonth],
   ] = await Promise.all([
@@ -118,20 +91,19 @@ export async function fetchDashboardData(
         status: "available",
         createdAt: { $gte: lastMonth.start, $lte: lastMonth.end },
       }),
-      Appointment.find(appointmentQuery).sort({ date: 1 }).limit(4).lean(),
     ] as const),
     isAdmin
       ? Promise.all([
-          usersCol.countDocuments({ role: { $ne: Role.ADMIN } }),
-          usersCol.countDocuments({
-            role: { $ne: Role.ADMIN },
-            createdAt: { $gte: thisMonth.start, $lte: thisMonth.end },
-          }),
-          usersCol.countDocuments({
-            role: { $ne: Role.ADMIN },
-            createdAt: { $gte: lastMonth.start, $lte: lastMonth.end },
-          }),
-        ])
+        usersCol.countDocuments({ role: { $ne: Role.ADMIN } }),
+        usersCol.countDocuments({
+          role: { $ne: Role.ADMIN },
+          createdAt: { $gte: thisMonth.start, $lte: thisMonth.end },
+        }),
+        usersCol.countDocuments({
+          role: { $ne: Role.ADMIN },
+          createdAt: { $gte: lastMonth.start, $lte: lastMonth.end },
+        }),
+      ])
       : Promise.resolve([0, 0, 0] as const),
   ]);
 
@@ -150,16 +122,16 @@ export async function fetchDashboardData(
     },
     ...(isAdmin
       ? [
-          {
-            label: "Total Users",
-            value: totalUsers,
-            icon: "Users",
-            change: calcChange(usersThisMonth, usersLastMonth),
-          },
-        ]
+        {
+          label: "Total Users",
+          value: totalUsers,
+          icon: "Users",
+          change: calcChange(usersThisMonth, usersLastMonth),
+        },
+      ]
       : []),
     { label: "Revenue (MTD)", value: "NPR0.00", icon: "DollarSign", change: "0.00%" },
   ];
 
-  return { stats, recentProperties, todaysSchedule: todaysAppointments };
+  return JSON.parse(JSON.stringify({ stats, recentProperties }));
 }

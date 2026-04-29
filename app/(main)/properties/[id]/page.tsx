@@ -657,20 +657,6 @@ export default function PropertyPage({
                 </div>
               ) : (
                 <>
-                  {/* Hide "Book a Visit" for the owner — they don't visit their own property */}
-                  {!isOwner && (
-                    <Button
-                      size="lg"
-                      disabled={sessionPending}
-                      className="w-full h-12 rounded-xl font-bold text-sm tracking-wide shadow-md"
-                      onClick={() =>
-                        router.push(`/appointments/new?propertyId=${id}`)
-                      }
-                    >
-                      {sessionPending ? "Loading..." : "Book a Visit"}
-                    </Button>
-                  )}
-
                   {/* Owner sees "View My Listing" directly, others need credits */}
                   {hasFullAccess || hasContactAccess || totalCredits > 0 ? (
                     <Button

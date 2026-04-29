@@ -13,7 +13,6 @@ export type DashboardStat = {
 export type DashboardResponse = {
   stats: DashboardStat[];
   recentProperties: any[];
-  todaysSchedule: any[];
 };
 
 /* ======================

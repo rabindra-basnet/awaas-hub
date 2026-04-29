@@ -34,8 +34,10 @@ export default function AppSidebar({ session }: { session: any }) {
 
   if (skipHeader) return null;
 
-  const allowedPages = DASHBOARD_PAGES.filter((page) =>
-    hasPermission(role, page.permission),
+  const allowedPages = DASHBOARD_PAGES.filter(
+    (page) =>
+      hasPermission(role, page.permission) &&
+      (!page.onlyForRoles || page.onlyForRoles.includes(role)),
   );
 
   const isCollapsed = state === "collapsed";

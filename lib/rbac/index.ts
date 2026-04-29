@@ -14,8 +14,6 @@ export enum Permission {
   // EDIT_PROPERTIES = "edit_properties",          // new
   // DELETE_PROPERTIES = "delete_properties",      // new
 
-  MANAGE_APPOINTMENTS = "manage_appointments",
-  //   VIEW_APPOINTMENTS = "view_appointments",
   MANAGE_USERS = "manage_users",
   VIEW_ANALYTICS = "view_analytics",
 
@@ -29,6 +27,9 @@ export enum Permission {
 
   VIEW_ADS = "view_ads",
   MANAGE_ADS = "manage_ads",
+
+  VIEW_SUPPORT_CHAT = "view_support_chat",
+  MANAGE_SUPPORT_CHAT = "manage_support_chat",
 }
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
@@ -43,11 +44,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 
     Permission.MANAGE_PROPERTIES,
 
-    Permission.MANAGE_APPOINTMENTS,
     Permission.VIEW_PROFILE,
     Permission.VIEW_FAVORITES,
     Permission.MANAGE_SETTINGS,
     Permission.VIEW_DASHBOARD,
+    Permission.VIEW_SUPPORT_CHAT,
     // Permission.VIEW_FILES,
     // Permission.MANAGE_FILES,
   ],
@@ -56,11 +57,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_PROPERTIES,
     Permission.VIEW_FAVORITES,
     Permission.MANAGE_PROPERTIES,
-    // Permission.VIEW_APPOINTMENTS,
-    Permission.MANAGE_APPOINTMENTS,
     Permission.VIEW_PROFILE,
     Permission.MANAGE_SETTINGS,
     Permission.VIEW_DASHBOARD,
+    Permission.VIEW_SUPPORT_CHAT,
     // Permission.VIEW_FILES,
   ],
 };

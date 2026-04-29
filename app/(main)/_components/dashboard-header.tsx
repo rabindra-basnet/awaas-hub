@@ -20,7 +20,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
 
   const skipHeaderPaths = [
     "/properties/",
-    "/appointments/",
     "/files",
     "/payment",
   ];
