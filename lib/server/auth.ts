@@ -68,6 +68,10 @@ export const auth = betterAuth({
       generateName: () => "Guest",
       emailDomainName: "awaashub.com",
     }),
+    admin({
+      adminRole: "admin",
+      impersonationSessionDuration: 60 * 60 * 8, // 8h
+    }),
   ],
 
   user: {
