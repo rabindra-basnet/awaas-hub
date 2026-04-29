@@ -103,6 +103,29 @@ export function useUnbanUser() {
   });
 }
 
+// ── Delete user ───────────────────────────────────────────────────────────────
+
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await fetch(`/api/admin/users/${userId}/delete`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message ?? "Failed to delete user");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      toast.success("User deleted");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
 // ── Reset password ────────────────────────────────────────────────────────────
 
 export function useResetPassword() {

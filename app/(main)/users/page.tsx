@@ -9,6 +9,7 @@ import {
   useBanUser,
   useUnbanUser,
   useResetPassword,
+  useDeleteUser,
   type AdminUser,
 } from "@/lib/client/queries/users.queries";
 import { authClient } from "@/lib/client/auth-client";
@@ -54,6 +55,7 @@ import {
   XCircle,
   RefreshCw,
   Filter,
+  Trash2,
 } from "lucide-react";
 
 type ActiveDialog =
@@ -62,6 +64,7 @@ type ActiveDialog =
   | { type: "unban"; user: AdminUser }
   | { type: "reset"; user: AdminUser }
   | { type: "impersonate"; user: AdminUser }
+  | { type: "delete"; user: AdminUser }
   | null;
 
 export default function AdminUsersPage() {
@@ -126,7 +129,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-border/60 overflow-hidden bg-card">
+      <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-20 gap-2 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -138,31 +141,37 @@ export default function AdminUsersPage() {
             <p className="text-sm">{search ? "No users match your search." : "No users yet."}</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/60 bg-muted/30">
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">User</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Role</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Status</th>
-                  <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Joined</th>
-                  <th className="px-4 py-3 w-12" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {filtered.map((user) => (
-                  <UserRow key={user.id} user={user} onAction={(type) => setDialog({ type, user } as ActiveDialog)} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {filtered.length > 0 && (
-          <div className="px-4 py-2.5 border-t border-border/40 bg-muted/10">
-            <p className="text-xs text-muted-foreground">
-              Showing {filtered.length} of {users.length} users
-            </p>
-          </div>
+          <>
+            {/* Sticky header + scrollable body */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-border/60 bg-muted/30">
+                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">User</th>
+                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Role</th>
+                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Status</th>
+                    <th className="text-left px-4 py-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Joined</th>
+                    <th className="px-4 py-3 w-12" />
+                  </tr>
+                </thead>
+              </table>
+            </div>
+            {/* Scrollable body only */}
+            <div className="overflow-y-auto max-h-[480px]">
+              <table className="w-full text-sm">
+                <tbody className="divide-y divide-border/40">
+                  {filtered.map((user) => (
+                    <UserRow key={user.id} user={user} onAction={(type) => setDialog({ type, user } as ActiveDialog)} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-4 py-2.5 border-t border-border/40 bg-muted/10">
+              <p className="text-xs text-muted-foreground">
+                Showing {filtered.length} of {users.length} users
+              </p>
+            </div>
+          </>
         )}
       </div>
 
@@ -196,6 +205,16 @@ export default function AdminUsersPage() {
         userId={dialog?.type === "reset" ? dialog.user.id : null}
         onClose={() => setDialog(null)}
         action="reset"
+      />
+      <ConfirmDialog
+        open={dialog?.type === "delete"}
+        title="Delete this user?"
+        description={`This will permanently delete ${dialog?.type === "delete" ? dialog.user.name : ""}'s account and all associated data. This cannot be undone.`}
+        confirmLabel="Delete"
+        confirmVariant="destructive"
+        userId={dialog?.type === "delete" ? dialog.user.id : null}
+        onClose={() => setDialog(null)}
+        action="delete"
       />
       <ImpersonateDialog
         open={dialog?.type === "impersonate"}
@@ -264,6 +283,8 @@ function UserRow({ user, onAction }: { user: AdminUser; onAction: (type: "role" 
             ) : (
               <DropdownMenuItem className="gap-2 cursor-pointer text-destructive focus:text-destructive" onClick={() => onAction("ban")}><ShieldBan className="h-3.5 w-3.5" />Ban User</DropdownMenuItem>
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="gap-2 cursor-pointer text-destructive focus:text-destructive" onClick={() => onAction("delete")}><Trash2 className="h-3.5 w-3.5" />Delete User</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </td>
@@ -328,18 +349,25 @@ function BanDialog({ open, user, onClose }: { open: boolean; user: AdminUser | n
 
 function ConfirmDialog({ open, title, description, confirmLabel, confirmVariant, userId, onClose, action }: {
   open: boolean; title: string; description: string; confirmLabel: string;
-  confirmVariant: "default" | "destructive"; userId: string | null; onClose: () => void; action: "unban" | "reset";
+  confirmVariant: "default" | "destructive"; userId: string | null; onClose: () => void; action: "unban" | "reset" | "delete";
 }) {
   const unban = useUnbanUser();
   const reset = useResetPassword();
-  const isPending = action === "unban" ? unban.isPending : reset.isPending;
+  const deleteUser = useDeleteUser();
+  const isPending = action === "unban" ? unban.isPending : action === "reset" ? reset.isPending : deleteUser.isPending;
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button variant={confirmVariant} disabled={isPending} onClick={async () => { if (!userId) return; if (action === "unban") await unban.mutateAsync(userId); else await reset.mutateAsync(userId); onClose(); }}>
+          <Button variant={confirmVariant} disabled={isPending} onClick={async () => {
+            if (!userId) return;
+            if (action === "unban") await unban.mutateAsync(userId);
+            else if (action === "reset") await reset.mutateAsync(userId);
+            else await deleteUser.mutateAsync(userId);
+            onClose();
+          }}>
             {isPending && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}{confirmLabel}
           </Button>
         </DialogFooter>
