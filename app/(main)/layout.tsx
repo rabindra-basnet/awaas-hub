@@ -12,7 +12,7 @@ import { AnonymousProvider } from "../guest-provider";
 
 const PUBLIC_PATHS = [/^\/properties$/, /^\/properties\/[a-fA-F0-9]{24}$/];
 
-const FULLSCREEN_PATHS = [/^\/properties\/.+/];
+const FULLSCREEN_PATHS = [/^\/properties$/, /^\/properties\/.+/];
 
 export default function DashboardProvider({
   children,
