@@ -1,9 +1,10 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Bell, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useSession } from "@/lib/client/auth-client";
 import { ModeToggle } from "@/components/theme-toggle";
+import NotificationsBell from "./notifications-bell";
 
 interface DashboardHeaderProps {
   onSearch?: (query: string) => void;
@@ -64,9 +65,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
               </div>
             )}
 
-            <button className="h-10 w-10 rounded-lg border flex items-center justify-center hover:bg-accent transition-colors">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-            </button>
+            <NotificationsBell />
 
             <ModeToggle />
           </div>

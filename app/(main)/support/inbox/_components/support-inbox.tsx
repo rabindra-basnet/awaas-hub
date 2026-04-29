@@ -45,19 +45,6 @@ export default function SupportInbox() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 h-full flex flex-col">
-      {/* Page header */}
-      <div className="mb-4 shrink-0">
-        <h1 className="text-xl font-bold tracking-tight">Support Inbox</h1>
-        <p className="text-sm text-muted-foreground">
-          {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
-          {conversations.filter((c) => c.unreadByAdmin > 0).length > 0 && (
-            <span className="ml-2 text-primary font-semibold">
-              · {conversations.filter((c) => c.unreadByAdmin > 0).length} unread
-            </span>
-          )}
-        </p>
-      </div>
-
       {/* Main panel */}
       <div className="flex flex-1 gap-4 min-h-0">
         {/* ── Left sidebar ── */}

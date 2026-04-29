@@ -126,7 +126,7 @@ export function useSendSupportMessage(
 
 // ── Admin: inbox (all conversations) ─────────────────────────────────────────
 
-export function useAdminSupportInbox() {
+export function useAdminSupportInbox(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["support-inbox"],
     queryFn: async (): Promise<{ conversations: SupportConversation[] }> => {
@@ -135,6 +135,7 @@ export function useAdminSupportInbox() {
       return res.json();
     },
     staleTime: 0,
+    enabled: options?.enabled ?? true,
   });
 }
 
