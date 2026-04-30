@@ -95,6 +95,10 @@ export default function PropertiesContent() {
 
   const clearAll = useCallback(() => { setFilters(EMPTY); setSort("newest"); }, []);
 
+  const hasFilters = filters.statuses.length > 0 || filters.categories.length > 0 ||
+    filters.locations.length > 0 || !!filters.minPrice || !!filters.maxPrice ||
+    filters.negotiable || filters.verified || !!filters.search;
+
   const counts = useMemo(() => {
     const s: Record<string, number> = {}, c: Record<string, number> = {}, l: Record<string, number> = {};
     for (const p of allProperties) {
@@ -167,82 +171,10 @@ export default function PropertiesContent() {
     </div>
   );
 
-  type Pill = { label: string; clear: () => void };
-  const pills: Pill[] = [
-    ...filters.statuses.map(s => ({ label: s[0].toUpperCase() + s.slice(1), clear: () => toggle("statuses", s) })),
-    ...filters.categories.map(c => ({ label: c, clear: () => toggle("categories", c) })),
-    ...filters.locations.map(l => ({ label: l, clear: () => toggle("locations", l) })),
-    ...(filters.minPrice ? [{ label: `Min NPR ${Number(filters.minPrice).toLocaleString("en-IN")}`, clear: () => patch("minPrice", "") }] : []),
-    ...(filters.maxPrice ? [{ label: `Max NPR ${Number(filters.maxPrice).toLocaleString("en-IN")}`, clear: () => patch("maxPrice", "") }] : []),
-    ...(filters.negotiable ? [{ label: "Negotiable", clear: () => patch("negotiable", false) }] : []),
-    ...(filters.verified ? [{ label: "Verified", clear: () => patch("verified", false) }] : []),
-  ];
-
   const requireAuth = (fn: () => void) => {
     if (isGuest) { router.push("/login"); return; }
     fn();
   };
-
-  const FilterPanel = () => (
-    <div className="divide-y divide-border/50">
-      <div className="flex items-center justify-between pb-4">
-        <span className="font-bold text-sm">Filters</span>
-        {pills.length > 0 && (
-          <button onClick={clearAll} className="text-xs text-primary font-medium hover:underline flex items-center gap-1">
-            <RotateCcw size={11} /> Clear ({pills.length})
-          </button>
-        )}
-      </div>
-
-      <Accordion label="Listing Status" open>
-        {[
-          { label: "Available", val: "available", color: "bg-emerald-500" },
-          { label: "Booked", val: "booked", color: "bg-amber-500" },
-          { label: "Sold", val: "sold", color: "bg-red-500" },
-        ].map(({ label, val, color }) => (
-          <CheckItem key={val} checked={filters.statuses.includes(val)} onChange={() => toggle("statuses", val)} count={counts.s[val]}>
-            <span className={cn("w-2 h-2 rounded-full shrink-0", color)} />
-            {label}
-          </CheckItem>
-        ))}
-      </Accordion>
-
-      <Accordion label="Property Type" open>
-        {CATEGORIES.map(cat => (
-          <CheckItem key={cat} checked={filters.categories.includes(cat)} onChange={() => toggle("categories", cat)} count={counts.c[cat]}>
-            {cat}
-          </CheckItem>
-        ))}
-      </Accordion>
-
-      <Accordion label="Location">
-        {LOCATIONS.map(loc => (
-          <CheckItem key={loc} checked={filters.locations.includes(loc)} onChange={() => toggle("locations", loc)} count={counts.l[loc]}>
-            {loc}
-          </CheckItem>
-        ))}
-      </Accordion>
-
-      <Accordion label="Price Range (NPR)" open>
-        <div className="flex gap-2 pt-1">
-          <div className="flex-1">
-            <p className="text-[10px] text-muted-foreground mb-1">Min</p>
-            <Input type="number" value={filters.minPrice} onChange={e => patch("minPrice", e.target.value)} placeholder="Any" className="h-8 text-xs" />
-          </div>
-          <span className="text-muted-foreground text-xs self-end mb-1.5">–</span>
-          <div className="flex-1">
-            <p className="text-[10px] text-muted-foreground mb-1">Max</p>
-            <Input type="number" value={filters.maxPrice} onChange={e => patch("maxPrice", e.target.value)} placeholder="Any" className="h-8 text-xs" />
-          </div>
-        </div>
-      </Accordion>
-
-      <Accordion label="More Options">
-        <CheckItem checked={filters.negotiable} onChange={() => patch("negotiable", !filters.negotiable)}>Negotiable price</CheckItem>
-        <CheckItem checked={filters.verified} onChange={() => patch("verified", !filters.verified)}>Verified only</CheckItem>
-      </Accordion>
-    </div>
-  );
 
   return (
     <div className="flex h-full min-h-0 overflow-hidden">
@@ -250,7 +182,7 @@ export default function PropertiesContent() {
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-64 xl:w-72 shrink-0 border-r border-border/60 overflow-y-auto bg-card ml-2 rounded-tl-xl [scrollbar-width:none] [&::-webkit-scrollbar]:w-0">
         <div className="p-5">
-          <FilterPanel />
+          <FilterPanel filters={filters} counts={counts} hasFilters={hasFilters} clearAll={clearAll} toggle={toggle} patch={patch} />
         </div>
       </aside>
 
@@ -263,7 +195,7 @@ export default function PropertiesContent() {
               <span className="font-bold">Filters</span>
               <button onClick={() => setMobileFiltersOpen(false)}><X size={16} className="text-muted-foreground" /></button>
             </div>
-            <FilterPanel />
+            <FilterPanel filters={filters} counts={counts} hasFilters={hasFilters} clearAll={clearAll} toggle={toggle} patch={patch} />
             <Button className="w-full mt-6 rounded-xl" onClick={() => setMobileFiltersOpen(false)}>
               Show {filtered.length} properties
             </Button>
@@ -274,7 +206,7 @@ export default function PropertiesContent() {
       {/* Results pane */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
 
-        {/* Fixed info bar — count + sort + active pills */}
+        {/* Fixed info bar — count + sort + search */}
         <div className="shrink-0 px-4 lg:px-6 pt-4 pb-2 space-y-2">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-sm text-muted-foreground">
@@ -318,19 +250,6 @@ export default function PropertiesContent() {
             </div>
           </div>
 
-          {pills.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              {pills.map((pill) => (
-                <span key={pill.label} className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary/10 text-primary border border-primary/20 rounded-full px-3 py-1">
-                  {pill.label}
-                  <button onClick={pill.clear} className="text-primary/60 hover:text-primary"><X size={11} /></button>
-                </span>
-              ))}
-              <button onClick={clearAll} className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors">
-                <RotateCcw size={11} /> Clear all
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Scrollable grid — only this region scrolls */}
@@ -346,7 +265,7 @@ export default function PropertiesContent() {
                   {hasNextPage ? "More results are loading…" : "Try adjusting your filters"}
                 </p>
               </div>
-              {pills.length > 0 && (
+              {hasFilters && (
                 <Button variant="outline" size="sm" onClick={clearAll} className="gap-1.5 text-xs">
                   <RotateCcw size={12} /> Clear filters
                 </Button>
@@ -583,6 +502,79 @@ function PropertyCard({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── FilterPanel — must live OUTSIDE PropertiesContent so React never sees a
+//    new component type on re-render, which would cause inputs to lose focus. ──
+interface FilterPanelProps {
+  filters: Filters;
+  counts: { s: Record<string, number>; c: Record<string, number>; l: Record<string, number> };
+  hasFilters: boolean;
+  clearAll: () => void;
+  toggle: (k: "statuses" | "locations" | "categories", v: string) => void;
+  patch: <K extends keyof Filters>(k: K, v: Filters[K]) => void;
+}
+function FilterPanel({ filters, counts, hasFilters, clearAll, toggle, patch }: FilterPanelProps) {
+  return (
+    <div className="divide-y divide-border/50">
+      <div className="flex items-center justify-between pb-4">
+        <span className="font-bold text-sm">Filters</span>
+        {hasFilters && (
+          <button onClick={clearAll} className="text-xs text-primary font-medium hover:underline flex items-center gap-1">
+            <RotateCcw size={11} /> Clear
+          </button>
+        )}
+      </div>
+
+      <Accordion label="Listing Status" open>
+        {[
+          { label: "Available", val: "available", color: "bg-emerald-500" },
+          { label: "Booked", val: "booked", color: "bg-amber-500" },
+          { label: "Sold", val: "sold", color: "bg-red-500" },
+        ].map(({ label, val, color }) => (
+          <CheckItem key={val} checked={filters.statuses.includes(val)} onChange={() => toggle("statuses", val)} count={counts.s[val]}>
+            <span className={cn("w-2 h-2 rounded-full shrink-0", color)} />
+            {label}
+          </CheckItem>
+        ))}
+      </Accordion>
+
+      <Accordion label="Property Type" open>
+        {CATEGORIES.map(cat => (
+          <CheckItem key={cat} checked={filters.categories.includes(cat)} onChange={() => toggle("categories", cat)} count={counts.c[cat]}>
+            {cat}
+          </CheckItem>
+        ))}
+      </Accordion>
+
+      <Accordion label="Location">
+        {LOCATIONS.map(loc => (
+          <CheckItem key={loc} checked={filters.locations.includes(loc)} onChange={() => toggle("locations", loc)} count={counts.l[loc]}>
+            {loc}
+          </CheckItem>
+        ))}
+      </Accordion>
+
+      <Accordion label="Price Range (NPR)" open>
+        <div className="flex gap-2 pt-1">
+          <div className="flex-1">
+            <p className="text-[10px] text-muted-foreground mb-1">Min</p>
+            <Input type="number" value={filters.minPrice} onChange={e => patch("minPrice", e.target.value)} placeholder="Any" className="h-8 text-xs" />
+          </div>
+          <span className="text-muted-foreground text-xs self-end mb-1.5">–</span>
+          <div className="flex-1">
+            <p className="text-[10px] text-muted-foreground mb-1">Max</p>
+            <Input type="number" value={filters.maxPrice} onChange={e => patch("maxPrice", e.target.value)} placeholder="Any" className="h-8 text-xs" />
+          </div>
+        </div>
+      </Accordion>
+
+      <Accordion label="More Options">
+        <CheckItem checked={filters.negotiable} onChange={() => patch("negotiable", !filters.negotiable)}>Negotiable price</CheckItem>
+        <CheckItem checked={filters.verified} onChange={() => patch("verified", !filters.verified)}>Verified only</CheckItem>
+      </Accordion>
     </div>
   );
 }
