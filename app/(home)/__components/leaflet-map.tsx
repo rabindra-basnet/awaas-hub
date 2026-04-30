@@ -90,7 +90,7 @@ export default function LeafletMap({
 
   const lightTile = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
   // CartoDB dark tiles — free, no API key required (unlike Stadia Maps which 401s in production)
-  const darkTile = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+  // const darkTile = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
   return (
     <div className="h-full w-full">
@@ -101,7 +101,7 @@ export default function LeafletMap({
         className="h-full w-full"
         style={{ height: "100%", width: "100%", zIndex: 0 }}
       >
-        <TileLayer url={dark ? darkTile : lightTile} />
+        <TileLayer url={lightTile} />
 
         <Marker position={center} icon={createMapPinIcon()}>
           <Popup>
