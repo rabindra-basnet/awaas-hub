@@ -40,10 +40,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     if (isAnonymous) router.replace("/properties");
   }, [isPending, isPublicPath, session, isAnonymous, router]);
 
-  // Block render while auth resolves or a redirect is in flight
-  if (isPending) return null;
-  if (!isPublicPath && !session) return null;
-  if (!isPublicPath && isAnonymous) return null;
+  // Show a spinner while auth resolves or while a redirect is in flight
+  if (isPending || (!isPublicPath && !session) || (!isPublicPath && isAnonymous)) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   // RBAC guards — only for authenticated, non-anonymous users on protected paths
   if (session && !isAnonymous && !isPublicPath && pathname) {
