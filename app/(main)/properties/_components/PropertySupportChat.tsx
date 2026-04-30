@@ -35,12 +35,19 @@ function MessageBubble({
   const isAdmin = msg.senderRole === "admin";
 
   return (
-    <div className={cn("flex flex-col gap-0.5", isOwn ? "items-end" : "items-start")}>
+    <div
+      className={cn(
+        "flex flex-col gap-0.5",
+        isOwn ? "items-end" : "items-start",
+      )}
+    >
       {!isOwn && (
         <div className="flex items-center gap-1.5 px-1">
           <Avatar className="w-5 h-5">
             <AvatarFallback className="text-[9px] font-black bg-primary/10 text-primary">
-              {isAdmin ? "AD" : (msg.senderName?.slice(0, 2).toUpperCase() ?? "??")}
+              {isAdmin
+                ? "AD"
+                : (msg.senderName?.slice(0, 2).toUpperCase() ?? "??")}
             </AvatarFallback>
           </Avatar>
           <span className="text-[10px] text-muted-foreground font-semibold">
@@ -61,7 +68,9 @@ function MessageBubble({
         <span
           className={cn(
             "block text-[10px] mt-1 font-medium",
-            isOwn ? "text-primary-foreground/60 text-right" : "text-muted-foreground/70",
+            isOwn
+              ? "text-primary-foreground/60 text-right"
+              : "text-muted-foreground/70",
           )}
         >
           {isOptimistic ? (
@@ -86,8 +95,12 @@ export default function PropertySupportChat({
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  console.log("Property Test", propertyTitle);
 
-  const { data, isLoading, error } = useSupportThread(propertyId);
+  const { data, isLoading, error } = useSupportThread(
+    propertyId,
+    propertyTitle,
+  );
   const sendMessage = useSendSupportMessage(propertyId, propertyTitle);
 
   useSupportChannel(data?.conversation._id, ["support-thread", propertyId]);
@@ -140,7 +153,9 @@ export default function PropertySupportChat({
               <MessageCircle size={18} className="text-primary" />
             </div>
             <div>
-              <p className="text-xs font-bold text-foreground">Chat with Support</p>
+              <p className="text-xs font-bold text-foreground">
+                Chat with Support
+              </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Ask us anything about this property
               </p>
@@ -198,7 +213,9 @@ export default function PropertySupportChat({
         </div>
         <p className="text-[10px] text-muted-foreground mt-1 text-right">
           Press{" "}
-          <kbd className="font-mono bg-muted px-1 rounded text-[9px]">Enter</kbd>{" "}
+          <kbd className="font-mono bg-muted px-1 rounded text-[9px]">
+            Enter
+          </kbd>{" "}
           to send
         </p>
       </div>

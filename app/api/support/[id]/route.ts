@@ -13,7 +13,10 @@ import {
 } from "@/lib/error";
 import { getDb } from "@/lib/server/db";
 import { Role } from "@/lib/rbac";
-import { broadcastSupportMessage } from "@/lib/server/supabase";
+import {
+  broadcastSupportMessage,
+  broadcastUserNotification,
+} from "@/lib/server/supabase";
 
 /**
  * GET /api/support/[id]
@@ -114,6 +117,17 @@ export async function POST(
 
     await broadcastSupportMessage(conversation._id.toString(), {
       message: msgObj,
+    });
+
+    await broadcastUserNotification(conversation.userId.toString(), {
+      message: msgObj,
+      conversation: {
+        _id: conversation._id.toString(),
+        propertyId: conversation.propertyId,
+        propertyTitle: conversation.propertyTitle,
+        unreadByUser: conversation.unreadByUser,
+        lastMessageAt: conversation.lastMessageAt,
+      },
     });
 
     return NextResponse.json({ message: msgObj }, { status: 201 });

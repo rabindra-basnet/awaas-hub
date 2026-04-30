@@ -19,10 +19,7 @@ export async function fetchFavorites(session: Session): Promise<any[]> {
     return [];
   }
 
-  const favorites =
-    role === Role.ADMIN
-      ? await Favorite.find({}).lean()
-      : await Favorite.find({ userId: session.user.id }).lean();
+  const favorites = await Favorite.find({ userId: session.user.id }).lean();
 
   if (!favorites.length) return [];
 

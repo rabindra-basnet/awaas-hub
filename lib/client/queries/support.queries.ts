@@ -41,11 +41,11 @@ export interface SupportThread {
 
 // ── User: own support thread ──────────────────────────────────────────────────
 
-export const supportThreadQuery = (propertyId: string = "") => ({
+export const supportThreadQuery = (propertyId: string = "", propertyTitle: string = "") => ({
   queryKey: ["support-thread", propertyId],
   queryFn: async (): Promise<SupportThread> => {
     const url = propertyId
-      ? `/api/support?propertyId=${encodeURIComponent(propertyId)}`
+      ? `/api/support?propertyId=${encodeURIComponent(propertyId)}&propertyTitle=${encodeURIComponent(propertyTitle)}`
       : "/api/support";
     const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to load support thread");
@@ -54,8 +54,8 @@ export const supportThreadQuery = (propertyId: string = "") => ({
   staleTime: 30_000,
 });
 
-export function useSupportThread(propertyId: string = "") {
-  return useQuery(supportThreadQuery(propertyId));
+export function useSupportThread(propertyId: string = "", propertyTitle: string = "") {
+  return useQuery(supportThreadQuery(propertyId, propertyTitle));
 }
 
 export function useSendSupportMessage(
@@ -280,6 +280,108 @@ export function useSupportChannel(
   }, [conversationId, handleMessage]);
 }
 
+// ── User: unread admin reply notifications ────────────────────────────────────
+
+export interface UserNotificationsData {
+  conversations: SupportConversation[];
+  totalUnread: number;
+}
+
+export function useUserNotifications(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["user-notifications"],
+    queryFn: async (): Promise<UserNotificationsData> => {
+      const res = await fetch("/api/support/user-notifications");
+      if (!res.ok) throw new Error("Failed to load notifications");
+      return res.json();
+    },
+    staleTime: 0,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+export function useUserNotificationsChannel(userId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`user-notifications-${userId}`)
+      .on(
+        "broadcast",
+        { event: "admin-reply" },
+        ({
+          payload,
+        }: {
+          payload: {
+            message: SupportMessage;
+            conversation: Partial<SupportConversation>;
+          };
+        }) => {
+          // Bump notification count in the bell cache
+          queryClient.setQueryData<UserNotificationsData>(
+            ["user-notifications"],
+            (old) => {
+              const convId = payload.conversation._id;
+              if (!old) {
+                return {
+                  conversations: [payload.conversation as SupportConversation],
+                  totalUnread: 1,
+                };
+              }
+              const exists = old.conversations.some((c) => c._id === convId);
+              const conversations = exists
+                ? old.conversations.map((c) =>
+                    c._id === convId
+                      ? {
+                          ...c,
+                          unreadByUser: (c.unreadByUser ?? 0) + 1,
+                          lastMessage: payload.message.content.slice(0, 80),
+                          lastMessageAt: payload.message.createdAt,
+                        }
+                      : c,
+                  )
+                : [payload.conversation as SupportConversation, ...old.conversations];
+              return {
+                conversations,
+                totalUnread: conversations.reduce(
+                  (sum, c) => sum + (c.unreadByUser ?? 0),
+                  0,
+                ),
+              };
+            },
+          );
+
+          // Append message to the open chat thread if it's cached
+          const propertyId = payload.conversation.propertyId ?? "";
+          queryClient.setQueryData<SupportThread>(
+            ["support-thread", propertyId],
+            (old) => {
+              if (!old) return old;
+              const alreadyExists = old.messages.some(
+                (m) => m._id === payload.message._id,
+              );
+              if (alreadyExists) return old;
+              return {
+                ...old,
+                messages: [
+                  ...old.messages.filter((m) => !m._id.startsWith("optimistic-")),
+                  payload.message,
+                ],
+              };
+            },
+          );
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, queryClient]);
+}
+
 // ── Supabase Realtime: admin inbox channel ────────────────────────────────────
 
 export function useAdminInboxChannel() {
@@ -320,14 +422,14 @@ export function useAdminInboxChannel() {
                 conversations: old.conversations.map((c) =>
                   c._id === payload.message.conversationId
                     ? {
-                        ...c,
-                        lastMessage: payload.message.content.slice(0, 80),
-                        lastMessageAt: payload.message.createdAt,
-                        unreadByAdmin:
-                          payload.message.senderRole !== "admin"
-                            ? c.unreadByAdmin + 1
-                            : c.unreadByAdmin,
-                      }
+                      ...c,
+                      lastMessage: payload.message.content.slice(0, 80),
+                      lastMessageAt: payload.message.createdAt,
+                      unreadByAdmin:
+                        payload.message.senderRole !== "admin"
+                          ? c.unreadByAdmin + 1
+                          : c.unreadByAdmin,
+                    }
                     : c,
                 ),
               };

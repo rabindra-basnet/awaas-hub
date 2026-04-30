@@ -1,4 +1,4 @@
-import { queryOptions, useQuery, useMutation } from "@tanstack/react-query";
+import { queryOptions, useQuery, useMutation, useInfiniteQuery, useSuspenseInfiniteQuery, keepPreviousData } from "@tanstack/react-query";
 import { getQueryClient } from "@/lib/query-client";
 import { FeaturedProperty } from "@/app/(home)/__components/featured-properties";
 
@@ -46,6 +46,7 @@ export type PropertyForm = {
 export const propertyKeys = {
   all: ["properties"] as const,
   list: (userId?: string) => ["properties", userId] as const,
+  infinite: () => ["properties", "infinite"] as const,
   detail: (id: string) => ["property", id] as const,
   images: (id: string) => ["property-images", id] as const,
 };
@@ -66,6 +67,42 @@ export const propertiesQuery = (userId?: string) =>
 
 export const useProperties = (userId?: string) =>
   useQuery(propertiesQuery(userId));
+
+/* ======================
+   READ — INFINITE (listing page)
+====================== */
+const PAGE_LIMIT = 12;
+
+export type PropertiesPage = {
+  items: any[];
+  nextCursor: string | null;
+};
+
+export const infinitePropertiesQueryOptions = () => ({
+  queryKey: propertyKeys.infinite(),
+  queryFn: async ({ pageParam }: { pageParam: string | null }) => {
+    const params = new URLSearchParams({ limit: String(PAGE_LIMIT) });
+    if (pageParam) params.set("cursor", pageParam);
+    const res = await fetch(`/api/properties?${params}`);
+    if (!res.ok) throw new Error("Failed to fetch properties");
+    const data: PropertiesPage = await res.json();
+    return {
+      ...data,
+      items: data.items.map((p: any) => ({ ...p, isFavorite: !!p.isFavorite })),
+    };
+  },
+  initialPageParam: null as string | null,
+  getNextPageParam: (lastPage: PropertiesPage) => lastPage.nextCursor ?? undefined,
+});
+
+export const useInfiniteProperties = () =>
+  useInfiniteQuery({
+    ...infinitePropertiesQueryOptions(),
+    placeholderData: keepPreviousData,
+  });
+
+export const useInfinitePropertiesSuspense = () =>
+  useSuspenseInfiniteQuery(infinitePropertiesQueryOptions());
 
 /* ======================
    READ — SINGLE
@@ -103,29 +140,45 @@ export const useToggleFavorite = () =>
       return res.json();
     },
     onMutate: async ({ propertyId, isFav }) => {
-      await getQueryClient().cancelQueries({ queryKey: propertyKeys.all });
-      const snapshot = getQueryClient().getQueriesData({ queryKey: propertyKeys.all });
-      getQueryClient().setQueriesData(
-        { queryKey: propertyKeys.all },
-        (old: any[] | undefined) =>
-          old?.map((p) =>
-            p._id === propertyId ? { ...p, isFavorite: !isFav } : p,
-          ) ?? old,
+      const qc = getQueryClient();
+      await qc.cancelQueries({ queryKey: propertyKeys.infinite() });
+      await qc.cancelQueries({ queryKey: propertyKeys.detail(propertyId) });
+
+      const snapshotInfinite = qc.getQueryData(propertyKeys.infinite());
+      const snapshotDetail = qc.getQueryData(propertyKeys.detail(propertyId));
+
+      // Infinite query stores { pages: Page[], pageParams: [] } — must update nested items
+      qc.setQueryData(propertyKeys.infinite(), (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            items: page.items.map((p: any) =>
+              p._id === propertyId ? { ...p, isFavorite: !isFav } : p,
+            ),
+          })),
+        };
+      });
+
+      qc.setQueryData(
+        propertyKeys.detail(propertyId),
+        (old: any) => (old ? { ...old, isFavorite: !isFav } : old),
       );
-      return { snapshot };
+
+      return { snapshotInfinite, snapshotDetail };
     },
-    onError: (_err, _vars, context) => {
-      if (context?.snapshot) {
-        for (const [key, data] of context.snapshot) {
-          getQueryClient().setQueryData(key, data);
-        }
-      }
+    onError: (_err, { propertyId }, context) => {
+      const qc = getQueryClient();
+      if (context?.snapshotInfinite !== undefined)
+        qc.setQueryData(propertyKeys.infinite(), context.snapshotInfinite);
+      if (context?.snapshotDetail !== undefined)
+        qc.setQueryData(propertyKeys.detail(propertyId), context.snapshotDetail);
     },
     onSettled: (_, __, { propertyId }) => {
-      getQueryClient().invalidateQueries({ queryKey: propertyKeys.all });
-      getQueryClient().invalidateQueries({
-        queryKey: propertyKeys.detail(propertyId),
-      });
+      const qc = getQueryClient();
+      qc.invalidateQueries({ queryKey: propertyKeys.infinite() });
+      qc.invalidateQueries({ queryKey: propertyKeys.detail(propertyId) });
     },
   });
 

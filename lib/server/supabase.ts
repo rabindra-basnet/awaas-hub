@@ -12,6 +12,10 @@ export async function broadcastNewConversation(payload: object) {
   return _broadcast("admin-support-inbox", "new-conversation", payload);
 }
 
+export async function broadcastUserNotification(userId: string, payload: object) {
+  return _broadcast(`user-notifications-${userId}`, "admin-reply", payload);
+}
+
 export async function broadcastPropertyMessage(
   conversationId: string,
   payload: object,

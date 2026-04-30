@@ -38,19 +38,14 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 
   [Role.SELLER]: [
     Permission.VIEW_PROPERTIES,
-    // Permission.CREATE_PROPERTIES,
-    // Permission.EDIT_PROPERTIES,
-    // Permission.DELETE_PROPERTIES,
-
     Permission.MANAGE_PROPERTIES,
-
     Permission.VIEW_PROFILE,
     Permission.VIEW_FAVORITES,
     Permission.MANAGE_SETTINGS,
     Permission.VIEW_DASHBOARD,
     Permission.VIEW_SUPPORT_CHAT,
-    // Permission.VIEW_FILES,
-    // Permission.MANAGE_FILES,
+    Permission.VIEW_FILES,
+    Permission.MANAGE_FILES,
   ],
 
   [Role.BUYER]: [
@@ -61,7 +56,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.MANAGE_SETTINGS,
     Permission.VIEW_DASHBOARD,
     Permission.VIEW_SUPPORT_CHAT,
-    // Permission.VIEW_FILES,
   ],
 };
 

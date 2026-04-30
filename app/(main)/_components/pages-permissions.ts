@@ -79,14 +79,6 @@ export const DASHBOARD_PAGES: DashboardPage[] = [
     icons: BarChart3,
   },
   {
-    title: "Support",
-    description: "Chat with our support team",
-    href: "/support",
-    permission: Permission.VIEW_SUPPORT_CHAT,
-    icons: MessageCircle,
-    onlyForRoles: [Role.BUYER, Role.SELLER],
-  },
-  {
     title: "Support Inbox",
     description: "Manage user support conversations",
     href: "/support/inbox",
