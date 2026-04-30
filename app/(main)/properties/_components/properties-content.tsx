@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Search, X, ChevronDown, ChevronUp, SlidersHorizontal,
-  MapPin, Ruler, ArrowUpDown, Heart, MoreHorizontal,
-  Pencil, ChevronLeft, ChevronRight, CheckCircle2,
-  BadgeDollarSign, Home, Tag, RotateCcw, Plus,
-  Building2, Navigation, Clock,
+  X, ChevronDown, ChevronUp, ArrowUpDown,
+  MapPin, Ruler, Heart, MoreHorizontal,
+  Pencil, CheckCircle2,
+  Home, RotateCcw,
+  Building2, Navigation, Clock, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -20,14 +20,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { hasPermission, Permission, Role } from "@/lib/rbac";
 import { useSession } from "@/lib/client/auth-client";
-import { useSuspenseQuery } from "@tanstack/react-query";
 import {
-  propertiesQuery, useDeleteProperty, useToggleFavorite,
+  useInfiniteProperties, useDeleteProperty, useToggleFavorite,
 } from "@/lib/client/queries/properties.queries";
+import PropertiesSkeleton from "./properties-skeleton";
 import DeletePropertyDialog from "./delete-property";
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const PER_PAGE = 12;
 const LOCATIONS = ["Kathmandu", "Lalitpur", "Bhaktapur", "Pokhara", "Chitwan", "Butwal", "Biratnagar", "Dharan"];
 const CATEGORIES = ["House", "Apartment", "Land", "Colony", "Commercial"];
 const SORT_OPTIONS = [
@@ -56,18 +55,35 @@ export default function PropertiesContent() {
   const isGuest = isPending || !session || isAnonymous;
   const canManage = !isGuest && hasPermission(session?.user?.role as Role, Permission.MANAGE_PROPERTIES);
 
-  const { data: properties = [] } = useSuspenseQuery(propertiesQuery());
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+  } = useInfiniteProperties();
+
   const deleteProperty = useDeleteProperty();
   const toggleFav = useToggleFavorite();
 
   const [filters, setFilters] = useState<Filters>(EMPTY);
   const [sort, setSort] = useState<SortKey>("newest");
-  const [page, setPage] = useState(1);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+
+  const allProperties = useMemo(() => {
+    const flat = data?.pages.flatMap((p) => p.items) ?? [];
+    const seen = new Set<string>();
+    return flat.filter((p) => {
+      const id = String(p._id);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }, [data]);
 
   const patch = useCallback(<K extends keyof Filters>(k: K, v: Filters[K]) => {
     setFilters(f => ({ ...f, [k]: v }));
-    setPage(1);
   }, []);
 
   const toggle = useCallback((k: "statuses" | "locations" | "categories", v: string) => {
@@ -75,15 +91,13 @@ export default function PropertiesContent() {
       const a = f[k] as string[];
       return { ...f, [k]: a.includes(v) ? a.filter(x => x !== v) : [...a, v] };
     });
-    setPage(1);
   }, []);
 
-  const clearAll = useCallback(() => { setFilters(EMPTY); setSort("newest"); setPage(1); }, []);
+  const clearAll = useCallback(() => { setFilters(EMPTY); setSort("newest"); }, []);
 
-  // live counts across all data
   const counts = useMemo(() => {
     const s: Record<string, number> = {}, c: Record<string, number> = {}, l: Record<string, number> = {};
-    for (const p of properties as any[]) {
+    for (const p of allProperties) {
       const st = p.status?.toLowerCase() ?? "available";
       s[st] = (s[st] ?? 0) + 1;
       if (p.category) c[p.category] = (c[p.category] ?? 0) + 1;
@@ -92,10 +106,10 @@ export default function PropertiesContent() {
           l[loc] = (l[loc] ?? 0) + 1;
     }
     return { s, c, l };
-  }, [properties]);
+  }, [allProperties]);
 
   const filtered = useMemo(() => {
-    let list = [...(properties as any[])];
+    let list = [...allProperties];
     if (filters.search) {
       const q = filters.search.toLowerCase();
       list = list.filter(p => p.title?.toLowerCase().includes(q) || p.location?.toLowerCase().includes(q));
@@ -107,17 +121,51 @@ export default function PropertiesContent() {
     if (filters.maxPrice) list = list.filter(p => p.price <= Number(filters.maxPrice));
     if (filters.negotiable) list = list.filter(p => p.negotiable);
     if (filters.verified) list = list.filter(p => p.verificationStatus === "verified");
+    const ts = (p: any) => (p.createdAt ? new Date(p.createdAt).getTime() : 0);
     list.sort((a, b) => {
-      if (sort === "oldest") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      if (sort === "oldest") return ts(a) - ts(b);
       if (sort === "price_asc") return (a.price ?? 0) - (b.price ?? 0);
       if (sort === "price_desc") return (b.price ?? 0) - (a.price ?? 0);
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return ts(b) - ts(a); // newest
     });
     return list;
-  }, [properties, filters, sort]);
+  }, [allProperties, filters, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
-  const pageData = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // Always-fresh refs so the observer callback never closes over stale values
+  const hasNextPageRef = useRef(hasNextPage);
+  const isFetchingRef = useRef(isFetchingNextPage);
+  const fetchNextPageRef = useRef(fetchNextPage);
+  hasNextPageRef.current = hasNextPage;
+  isFetchingRef.current = isFetchingNextPage;
+  fetchNextPageRef.current = fetchNextPage;
+
+  // Callback ref on the sentinel element. Uses viewport (root: null) so it
+  // doesn't depend on the scroll container ref being set at the same time —
+  // React sets child refs before parent refs, so scrollContainerRef.current
+  // would still be null when this fires on the initial mount.
+  const sentinelRef = useCallback((el: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+    if (!el) return;
+    observerRef.current = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextPageRef.current && !isFetchingRef.current) {
+          fetchNextPageRef.current();
+        }
+      },
+      { rootMargin: "0px 0px 300px 0px" },
+    );
+    observerRef.current.observe(el);
+  }, []);
+
+  if (isLoading) return <PropertiesSkeleton />;
+  if (isError) return (
+    <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+      Failed to load properties.
+    </div>
+  );
 
   type Pill = { label: string; clear: () => void };
   const pills: Pill[] = [
@@ -197,148 +245,91 @@ export default function PropertiesContent() {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-background overflow-hidden">
+    <div className="flex h-full min-h-0 overflow-hidden">
 
-      {/* ── Custom header ─────────────────────────────────────────────────── */}
-      <header className="flex items-center gap-3 px-4 lg:px-6 h-14 border-b border-border/60 bg-card shrink-0">
-        {/* Logo/back */}
-        <Link href="/dashboard" className="flex items-center gap-2 shrink-0 text-foreground hover:text-primary transition-colors">
-          <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-black text-sm">A</div>
-          <span className="font-bold text-sm hidden sm:block">AawasHub</span>
-        </Link>
-
-        <div className="w-px h-5 bg-border mx-1 hidden sm:block" />
-
-        {/* Search */}
-        <div className="relative flex-1 max-w-xl">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={filters.search}
-            onChange={e => patch("search", e.target.value)}
-            placeholder="Search by name or location…"
-            className="pl-9 h-9 bg-muted/30 border-border/50 focus-visible:ring-primary/30 rounded-xl text-sm"
-          />
-          {filters.search && (
-            <button onClick={() => patch("search", "")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              <X size={14} />
-            </button>
-          )}
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex flex-col w-64 xl:w-72 shrink-0 border-r border-border/60 overflow-y-auto bg-card ml-2 rounded-tl-xl [scrollbar-width:none] [&::-webkit-scrollbar]:w-0">
+        <div className="p-5">
+          <FilterPanel />
         </div>
+      </aside>
 
-        <div className="flex items-center gap-2 ml-auto shrink-0">
-          {/* Mobile filter toggle */}
-          <Button variant="outline" size="sm" className="lg:hidden h-8 gap-1.5 text-xs rounded-lg" onClick={() => setMobileFiltersOpen(true)}>
-            <SlidersHorizontal size={13} />
-            Filters
-            {pills.length > 0 && <span className="bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{pills.length}</span>}
-          </Button>
-
-          {/* Sort */}
-          <div className="hidden sm:flex items-center gap-1.5 border border-border/50 rounded-lg px-2.5 py-1.5">
-            <ArrowUpDown size={12} className="text-muted-foreground shrink-0" />
-            <select
-              value={sort}
-              onChange={e => { setSort(e.target.value as SortKey); setPage(1); }}
-              className="text-xs font-medium bg-transparent outline-none text-foreground cursor-pointer"
-            >
-              {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </div>
-
-          {canManage && (
-            <Button size="sm" className="h-8 gap-1.5 text-xs rounded-lg" onClick={() => router.push("/properties/new")}>
-              <Plus size={13} /> Add
-            </Button>
-          )}
-
-          {isGuest && (
-            <Link href="/login">
-              <Button variant="outline" size="sm" className="h-8 text-xs rounded-lg">Sign in</Button>
-            </Link>
-          )}
-        </div>
-      </header>
-
-      {/* ── Body: sidebar + results ──────────────────────────────────────── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-
-        {/* Desktop sidebar */}
-        <aside className="hidden lg:flex flex-col w-64 xl:w-72 shrink-0 border-r border-border/60 overflow-y-auto bg-card [scrollbar-width:thin]">
-          <div className="p-5">
+      {/* Mobile sidebar overlay */}
+      {mobileFiltersOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" onClick={() => setMobileFiltersOpen(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="absolute left-0 top-0 bottom-0 w-72 bg-card border-r border-border overflow-y-auto p-5 z-10" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-bold">Filters</span>
+              <button onClick={() => setMobileFiltersOpen(false)}><X size={16} className="text-muted-foreground" /></button>
+            </div>
             <FilterPanel />
+            <Button className="w-full mt-6 rounded-xl" onClick={() => setMobileFiltersOpen(false)}>
+              Show {filtered.length} properties
+            </Button>
           </div>
-        </aside>
+        </div>
+      )}
 
-        {/* Mobile sidebar */}
-        {mobileFiltersOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden" onClick={() => setMobileFiltersOpen(false)}>
-            <div className="absolute inset-0 bg-black/50" />
-            <div className="absolute left-0 top-0 bottom-0 w-72 bg-card border-r border-border overflow-y-auto p-5 z-10" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <span className="font-bold">Filters</span>
-                <button onClick={() => setMobileFiltersOpen(false)}><X size={16} className="text-muted-foreground" /></button>
-              </div>
-              <FilterPanel />
-              <Button className="w-full mt-6 rounded-xl" onClick={() => setMobileFiltersOpen(false)}>
-                Show {filtered.length} properties
-              </Button>
+      {/* Results pane */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+
+        {/* Fixed info bar — count + sort + active pills */}
+        <div className="shrink-0 px-4 lg:px-6 pt-4 pb-2 space-y-2">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">{filtered.length}</span>{" "}
+              {filtered.length === 1 ? "property" : "properties"} found
+              {hasNextPage && (
+                <span className="text-xs ml-1 text-muted-foreground/60">(more loading…)</span>
+              )}
+            </p>
+            <div className="flex items-center gap-1.5 border border-border/50 rounded-lg px-2.5 py-1.5">
+              <ArrowUpDown size={12} className="text-muted-foreground shrink-0" />
+              <select value={sort} onChange={e => setSort(e.target.value as SortKey)} className="text-xs font-medium bg-transparent outline-none text-foreground cursor-pointer">
+                {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </div>
           </div>
-        )}
 
-        {/* Results pane — independently scrollable */}
-        <div className="flex-1 overflow-y-auto min-w-0">
-          <div className="px-4 lg:px-6 py-4 space-y-4">
-
-            {/* Results bar */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">{filtered.length}</span>{" "}
-                {filtered.length === 1 ? "property" : "properties"} found
-              </p>
-              {/* Mobile sort */}
-              <div className="sm:hidden flex items-center gap-1.5 border border-border/50 rounded-lg px-2.5 py-1.5">
-                <ArrowUpDown size={12} className="text-muted-foreground" />
-                <select value={sort} onChange={e => { setSort(e.target.value as SortKey); setPage(1); }} className="text-xs bg-transparent outline-none">
-                  {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
+          {pills.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {pills.map((pill) => (
+                <span key={pill.label} className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary/10 text-primary border border-primary/20 rounded-full px-3 py-1">
+                  {pill.label}
+                  <button onClick={pill.clear} className="text-primary/60 hover:text-primary"><X size={11} /></button>
+                </span>
+              ))}
+              <button onClick={clearAll} className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors">
+                <RotateCcw size={11} /> Clear all
+              </button>
             </div>
+          )}
+        </div>
 
-            {/* Active pills */}
-            {pills.length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap">
-                {pills.map((pill, i) => (
-                  <span key={i} className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary/10 text-primary border border-primary/20 rounded-full px-3 py-1">
-                    {pill.label}
-                    <button onClick={pill.clear} className="text-primary/60 hover:text-primary"><X size={11} /></button>
-                  </span>
-                ))}
-                <button onClick={clearAll} className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors">
-                  <RotateCcw size={11} /> Clear all
-                </button>
+        {/* Scrollable grid — only this region scrolls */}
+        <div className="flex-1 overflow-y-auto min-h-0 px-4 lg:px-6 pb-4 [scrollbar-width:thin]">
+          {filtered.length === 0 && !isFetchingNextPage ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+                <Home size={26} className="text-muted-foreground opacity-40" />
               </div>
-            )}
-
-            {/* Grid */}
-            {pageData.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-32 gap-4 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
-                  <Home size={26} className="text-muted-foreground opacity-40" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">No properties found</p>
-                  <p className="text-xs text-muted-foreground mt-1">Try adjusting your filters</p>
-                </div>
-                {pills.length > 0 && (
-                  <Button variant="outline" size="sm" onClick={clearAll} className="gap-1.5 text-xs">
-                    <RotateCcw size={12} /> Clear filters
-                  </Button>
-                )}
+              <div>
+                <p className="font-semibold text-sm">No properties found</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {hasNextPage ? "More results are loading…" : "Try adjusting your filters"}
+                </p>
               </div>
-            ) : (
+              {pills.length > 0 && (
+                <Button variant="outline" size="sm" onClick={clearAll} className="gap-1.5 text-xs">
+                  <RotateCcw size={12} /> Clear filters
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="pt-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {pageData.map((p: any) => (
+                {filtered.map((p: any) => (
                   <PropertyCard
                     key={p._id}
                     property={p}
@@ -349,37 +340,28 @@ export default function PropertiesContent() {
                   />
                 ))}
               </div>
-            )}
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-4 border-t border-border/40">
-                <p className="text-xs text-muted-foreground">Page {page} of {totalPages}</p>
-                <div className="flex items-center gap-1">
-                  <Button variant="outline" size="sm" disabled={page === 1} onClick={() => { setPage(p => p - 1); }} className="h-8 px-2.5 text-xs rounded-lg gap-1">
-                    <ChevronLeft size={13} /> Prev
-                  </Button>
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const p = Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
-                    return (
-                      <Button key={p} variant={p === page ? "default" : "outline"} size="sm" className="h-8 w-8 p-0 text-xs rounded-lg" onClick={() => setPage(p)}>{p}</Button>
-                    );
-                  })}
-                  <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => { setPage(p => p + 1); }} className="h-8 px-2.5 text-xs rounded-lg gap-1">
-                    Next <ChevronRight size={13} />
-                  </Button>
-                </div>
+              {/* Sentinel + loading indicator */}
+              <div ref={sentinelRef} className="flex items-center justify-center py-8">
+                {isFetchingNextPage && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 size={16} className="animate-spin" />
+                    Loading more…
+                  </div>
+                )}
+                {!hasNextPage && filtered.length > 0 && (
+                  <p className="text-xs text-muted-foreground/50">All properties loaded</p>
+                )}
               </div>
-            )}
-
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// ── Property card — Rightmove-style ──────────────────────────────────────────
+// ── Property card ─────────────────────────────────────────────────────────────
 
 function PropertyCard({
   property: p, canManage, isFavorite, onFavorite, onDelete,
@@ -429,13 +411,12 @@ function PropertyCard({
     >
       {/* ── Photo ── */}
       <div className="relative aspect-[16/10] overflow-hidden bg-muted">
-        {/* Carousel strip */}
         <div
           className="flex h-full transition-transform duration-500 ease-out"
           style={{ transform: `translateX(-${imgIdx * 100}%)`, width: `${images.length * 100}%` }}
         >
           {images.map((src, i) => (
-            <div key={i} className="relative h-full shrink-0" style={{ width: `${100 / images.length}%` }}>
+            <div key={`${src}-${i}`} className="relative h-full shrink-0" style={{ width: `${100 / images.length}%` }}>
               <Image
                 src={src} alt={p.title} fill
                 sizes="(max-width:640px)100vw,(max-width:1024px)50vw,33vw"
@@ -445,10 +426,8 @@ function PropertyCard({
           ))}
         </div>
 
-        {/* Gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
 
-        {/* Top badges */}
         <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
           <div className="flex flex-col gap-1.5">
             <span className={cn("inline-flex text-[10px] font-bold px-2.5 py-1 rounded-full", statusStyle)}>
@@ -498,7 +477,6 @@ function PropertyCard({
           </div>
         </div>
 
-        {/* Price */}
         <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
           <div>
             <p className="text-white text-lg font-black leading-tight drop-shadow-md">
@@ -508,17 +486,16 @@ function PropertyCard({
               <span className="text-white/80 text-[10px] font-semibold">Negotiable</span>
             )}
           </div>
-          {/* Image counter */}
           {images.length > 1 && (
             <div className="flex items-center gap-1">
               <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i - 1 + images.length) % images.length); }}
                 className="h-6 w-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity">
-                <ChevronLeft size={12} />
+                ‹
               </button>
               <span className="text-[10px] text-white/80 font-bold tabular-nums">{imgIdx + 1}/{images.length}</span>
               <button onClick={e => { e.stopPropagation(); setImgIdx(i => (i + 1) % images.length); }}
                 className="h-6 w-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity">
-                <ChevronRight size={12} />
+                ›
               </button>
             </div>
           )}
@@ -527,18 +504,15 @@ function PropertyCard({
 
       {/* ── Details ── */}
       <div className="flex flex-col gap-2 p-4">
-        {/* Title */}
         <h3 className="font-semibold text-[13px] leading-snug line-clamp-1 text-foreground group-hover:text-primary transition-colors">
           {p.title}
         </h3>
 
-        {/* Location */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <MapPin size={11} className="text-primary shrink-0" />
           <span className="truncate">{p.location || "Location N/A"}</span>
         </div>
 
-        {/* Stats row */}
         <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
           {p.category && (
             <span className="flex items-center gap-1">
@@ -557,7 +531,6 @@ function PropertyCard({
           )}
         </div>
 
-        {/* Road + Municipality */}
         {(p.roadType || p.municipality) && (
           <div className="flex items-center gap-3 text-[11px] text-muted-foreground/70">
             {p.roadType && <span>{p.roadType} road</span>}
@@ -565,10 +538,8 @@ function PropertyCard({
           </div>
         )}
 
-        {/* Divider */}
         <div className="h-px bg-border/40 mt-1" />
 
-        {/* Footer: days ago + view */}
         <div className="flex items-center justify-between">
           {daysLabel && (
             <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
@@ -582,8 +553,7 @@ function PropertyCard({
               isSold ? "text-muted-foreground hover:text-foreground" : "text-primary hover:text-primary/80",
             )}
           >
-            {isSold ? "View details" : "View property"}
-            <ChevronRight size={13} />
+            {isSold ? "View details" : "View property"} ›
           </button>
         </div>
       </div>
