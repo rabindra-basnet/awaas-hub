@@ -185,31 +185,11 @@ export default function PropertiesContent() {
 
   const FilterPanel = () => (
     <div className="divide-y divide-border/50">
-      <div className="flex items-center justify-between pb-3">
+      <div className="flex items-center justify-between pb-4">
         <span className="font-bold text-sm">Filters</span>
         {pills.length > 0 && (
           <button onClick={clearAll} className="text-xs text-primary font-medium hover:underline flex items-center gap-1">
             <RotateCcw size={11} /> Clear ({pills.length})
-          </button>
-        )}
-      </div>
-
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-        <input
-          type="text"
-          value={filters.search}
-          onChange={e => patch("search", e.target.value)}
-          placeholder="Search properties…"
-          className="w-full h-8 rounded-lg border border-border/60 bg-muted/40 pl-7 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors"
-        />
-        {filters.search && (
-          <button
-            onClick={() => patch("search", "")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            <X size={11} />
           </button>
         )}
       </div>
@@ -313,6 +293,22 @@ export default function PropertiesContent() {
                   <Plus size={13} /> New Property
                 </button>
               )}
+              {/* Search */}
+              <div className="relative">
+                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  value={filters.search}
+                  onChange={e => patch("search", e.target.value)}
+                  placeholder="Search…"
+                  className="h-[30px] w-36 sm:w-44 rounded-lg border border-border/50 bg-card pl-7 pr-6 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40 transition-colors"
+                />
+                {filters.search && (
+                  <button onClick={() => patch("search", "")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-1.5 border border-border/50 rounded-lg px-2.5 py-1.5">
                 <ArrowUpDown size={12} className="text-muted-foreground shrink-0" />
                 <select value={sort} onChange={e => setSort(e.target.value as SortKey)} className="text-xs font-medium bg-card text-foreground outline-none cursor-pointer">
