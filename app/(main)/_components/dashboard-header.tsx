@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, UserX } from "lucide-react";
-import { useSession, authClient } from "@/lib/client/auth-client";
+import { Home, Search } from "lucide-react";
+import { useSession } from "@/lib/client/auth-client";
 import { ModeToggle } from "@/components/theme-toggle";
 import NotificationsBell from "./notifications-bell";
 import { Button } from "@/components/ui/button";
@@ -13,21 +14,12 @@ interface DashboardHeaderProps {
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
   const pathname = usePathname();
-  const router = useRouter();
   const { data: session } = useSession();
 
-  const impersonatedBy = (session?.session as any)?.impersonatedBy as string | undefined;
+  const isAnonymous = session?.user?.isAnonymous === true;
 
-  const skipHeaderPaths = [
-    "/properties/",
-    "/files",
-    "/payment",
-  ];
-
-  // Check if current pathname starts with any of the skip paths
-  const skipHeader = skipHeaderPaths.some((path) => pathname?.startsWith(path));
-
-  if (skipHeader) return null;
+  const skipHeaderPaths = ["/properties/", "/files", "/payment"];
+  if (skipHeaderPaths.some((p) => pathname?.startsWith(p))) return null;
 
   const pageTitle =
     pathname
@@ -37,36 +29,40 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
       ?.replace(/[-_]/g, " ")
       .replace(/\b\w/g, (c) => c.toUpperCase()) || "Dashboard";
 
-  // Show search only on /dashboard
   const showSearch = pathname?.startsWith("/dashboard");
-
-  // Get user initials fallback
   const userName = session?.user?.name || "";
 
+  /* ── Guest header ─────────────────────────────────────────────────────── */
+  if (isAnonymous) {
+    return (
+      <header className="sticky top-0 z-20 bg-background border-b">
+        <div className="px-4 lg:px-6 py-3">
+          <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="rounded-lg bg-primary p-2 text-primary-foreground">
+                <Home className="h-5 w-5" />
+              </div>
+              <span className="text-xl font-bold text-foreground">AawasHub</span>
+            </Link>
+
+            <div className="flex items-center gap-2">
+              <ModeToggle />
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/login">Login</Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link href="/signup">Sign Up</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  /* ── Authenticated header ─────────────────────────────────────────────── */
   return (
     <header className="sticky top-0 z-20 bg-background border-b">
-      {/* Impersonation banner */}
-      {impersonatedBy && (
-        <div className="flex items-center justify-between gap-3 bg-amber-500 text-white px-4 py-2 text-sm font-medium">
-          <div className="flex items-center gap-2">
-            <UserX className="h-4 w-4 shrink-0" />
-            <span>
-              You are impersonating <span className="font-bold">{session?.user?.name}</span>
-            </span>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 px-2 text-xs border-white/40 text-white hover:bg-white/20 hover:text-white"
-            onClick={async () => {
-              await authClient.admin.stopImpersonating();
-              router.push("/settings");
-            }}
-          >
-            Stop Impersonating
-          </Button>
-        </div>
-      )}
       <div className="px-4 lg:px-6 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div>
@@ -76,7 +72,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
             </p>
           </div>
 
-          {/* Search + Notifications + Avatar */}
           <div className="flex items-center gap-3">
             {showSearch && (
               <div className="relative">
@@ -89,9 +84,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
                 />
               </div>
             )}
-
             <NotificationsBell />
-
             <ModeToggle />
           </div>
         </div>
