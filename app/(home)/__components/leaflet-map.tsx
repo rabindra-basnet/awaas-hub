@@ -11,7 +11,6 @@ import {
 import { renderToStaticMarkup } from "react-dom/server";
 import L from "leaflet";
 import { MapPin, MapPinned } from "lucide-react";
-import "leaflet/dist/leaflet.css";
 
 interface MapUpdaterProps {
   center: [number, number];
