@@ -86,6 +86,10 @@
   transition: filter 0.3s ease;
 }
 
+.dark-map-tiles {
+  filter: brightness(0.9) contrast(1.1);
+}
+
 @theme inline {
   --font-sans: var(--font-sans);
   --font-mono: "Geist Mono", "Geist Mono Fallback";
