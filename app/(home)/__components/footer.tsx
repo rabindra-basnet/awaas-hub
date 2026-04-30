@@ -102,6 +102,7 @@
 import Link from "next/link";
 import { Home } from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
+import Image from "next/image";
 
 export default function Footer() {
   const { t } = useLanguage();
@@ -127,12 +128,19 @@ export default function Footer() {
         <div className="mb-8 grid gap-8 md:grid-cols-4">
           <div>
             <div className="mb-4 flex items-center gap-2">
-              <div className="rounded-lg bg-primary p-2 text-primary-foreground">
-                <Home className="h-6 w-6" />
-              </div>
-              <span className="text-2xl font-bold text-foreground">
-                {t("footer.company")}
-              </span>
+              {/* Logo */}
+              <Link href="/" className="flex items-center gap-2">
+                <Image
+                  src="/home-logo.png"
+                  alt="Awaas Hub Logo"
+                  width={40}
+                  height={40}
+                  className="h-10 w-auto"
+                  priority
+                />
+                <span className="sr-only">Awaas Hub</span>
+              </Link>
+              <p className="text-muted-foreground">{t("footer.company")}</p>
             </div>
             <p className="text-muted-foreground">{t("footer.tagline")}</p>
           </div>

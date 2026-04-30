@@ -144,11 +144,7 @@ export default function PropertiesContent() {
   hasNextPageRef.current = hasNextPage;
   isFetchingRef.current = isFetchingNextPage;
   fetchNextPageRef.current = fetchNextPage;
-
-  // Callback ref on the sentinel element. Uses viewport (root: null) so it
-  // doesn't depend on the scroll container ref being set at the same time —
-  // React sets child refs before parent refs, so scrollContainerRef.current
-  // would still be null when this fires on the initial mount.
+  
   const sentinelRef = useCallback((el: HTMLDivElement | null) => {
     observerRef.current?.disconnect();
     observerRef.current = null;
