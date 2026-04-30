@@ -11,7 +11,6 @@ import {
 import { renderToStaticMarkup } from "react-dom/server";
 import L from "leaflet";
 import { MapPin, MapPinned } from "lucide-react";
-import "leaflet/dist/leaflet.css";
 
 interface MapUpdaterProps {
   center: [number, number];
@@ -71,6 +70,7 @@ export default function LeafletMap({
   const SelectedIcon = isUserLocation ? MapPinned : MapPin;
 
   function createMapPinIcon() {
+    
     const iconMarkup = renderToStaticMarkup(
       <SelectedIcon
         size={36}
@@ -89,9 +89,8 @@ export default function LeafletMap({
   }
 
   const lightTile = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-
-  const darkTile =
-    "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png";
+  // CartoDB dark tiles — free, no API key required (unlike Stadia Maps which 401s in production)
+  const darkTile = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 
   return (
     <div className="h-full w-full">

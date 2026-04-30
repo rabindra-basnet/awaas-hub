@@ -76,7 +76,7 @@ export const translations = {
       blog: "Blog",
       contact: "Contact",
       login: "Login",
-      register: "Register",
+      register: "Signup",
     },
     hero: {
       headline: "Find Your Perfect",

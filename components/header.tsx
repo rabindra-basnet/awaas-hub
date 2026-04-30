@@ -241,6 +241,7 @@ import LanguageSwitcher from "./language-switcher";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Home } from "lucide-react";
 import { ModeToggle } from "./theme-toggle";
+import Image from "next/image";
 
 interface HeaderProps {
   isMenuOpen: boolean;
@@ -264,14 +265,16 @@ export default function Header({ isMenuOpen, setIsMenuOpen }: HeaderProps) {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="rounded-lg bg-primary p-2 text-primary-foreground">
-              <Home className="h-5 w-5" />
-            </div>
-            <span className="text-xl font-bold text-foreground">
-              {t("footer.company")}
-            </span>
+            <Image
+              src="/home-logo.png"
+              alt="Awaas Hub Logo"
+              width={40}
+              height={40}
+              className="h-10 w-auto"
+              priority
+            />
+            <span className="sr-only">Awaas Hub</span>
           </Link>
-
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => (
@@ -285,8 +288,7 @@ export default function Header({ isMenuOpen, setIsMenuOpen }: HeaderProps) {
             ))}
           </nav>
 
-          <div className="flex justify-center">
-          </div>
+          <div className="flex justify-center"></div>
           {/* Right side actions */}
           <div className="flex items-center gap-2">
             <ModeToggle />

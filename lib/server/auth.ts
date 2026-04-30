@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { nextCookies } from "better-auth/next-js";
 import { connectToDatabase } from "./db";
-import { admin, anonymous } from "better-auth/plugins";
+import { anonymous } from "better-auth/plugins";
 import { lastLoginMethod } from "better-auth/plugins";
 import { hashPassword, verifyPassword } from "./password";
 import { sendResetPasswordEmail } from "../emails/send-reset-email";
@@ -16,7 +16,6 @@ if (!process.env.MONGODB_URI) {
   throw new Error("❌ MONGODB_URI is not defined");
 }
 
-// Connect to DB once at startup (Next.js module scope is reused in production)
 const { db, client } = await connectToDatabase();
 
 export const auth = betterAuth({
@@ -34,23 +33,21 @@ export const auth = betterAuth({
     },
     sendOnSignUp: true,
   },
+
   emailAndPassword: {
     enabled: true,
-    password: {
-      hash: hashPassword,
-      verify: verifyPassword,
-    },
+    password: { hash: hashPassword, verify: verifyPassword },
     requireEmailVerification: true,
     autoSignIn: false,
-    sendResetPassword: async ({ user, url, token }, _request) => {
+    sendResetPassword: async ({ user, url }) => {
       await sendResetPasswordEmail({
         email: user.email,
         name: user.name ?? "Customer",
         url,
       });
     },
-    onPasswordReset: async ({ user }, _request) => {
-      console.log(`Password for user ${user.email} has been reset.`);
+    onPasswordReset: async ({ user }) => {
+      console.log(`Password reset for ${user.email}`);
     },
   },
 
@@ -68,32 +65,21 @@ export const auth = betterAuth({
       generateName: () => "Guest",
       emailDomainName: "awaashub.com",
     }),
-    admin({
-      adminRole: "admin",
-      impersonationSessionDuration: 60 * 60 * 8, // 8h
-    }),
   ],
 
   user: {
     additionalFields: {
       role: {
+        
         type: "string",
         default: null,
         input: true,
       },
-      // subscription: {
-      //   type: "string",
-      //   default: null,
-      //   input: true,
-      // },
     },
     constraints: {
-      email: {
-        unique: true,
-      },
+      email: { unique: true },
     },
   },
 });
 
-// Type for session
 export type Session = typeof auth.$Infer.Session;

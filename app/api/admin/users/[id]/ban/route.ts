@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/server/auth";
 import { getServerSession } from "@/lib/server/getSession";
 import { Role } from "@/lib/rbac";
 import { forbidden, unauthorized, internalServerError } from "@/lib/error";
-import { headers } from "next/headers";
+import { getDb } from "@/lib/server/db";
+import { ObjectId } from "mongodb";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** POST /api/admin/users/[id]/ban */
 export async function POST(req: Request, { params }: Params) {
   try {
     const session = await getServerSession();
@@ -17,10 +16,19 @@ export async function POST(req: Request, { params }: Params) {
     const { id } = await params;
     const { reason } = await req.json().catch(() => ({}));
 
-    await auth.api.banUser({
-      body: { userId: id, banReason: reason || "Violated platform policy" },
-      headers: await headers(),
-    });
+    if (!ObjectId.isValid(id)) return forbidden();
+
+    const db = await getDb();
+    await db.collection("users").updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          banned: true,
+          banReason: reason || "Violated platform policy",
+          banExpires: null,
+        },
+      },
+    );
 
     return NextResponse.json({ success: true });
   } catch (err) {
