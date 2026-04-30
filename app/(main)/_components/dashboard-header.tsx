@@ -7,6 +7,7 @@ import { useSession } from "@/lib/client/auth-client";
 import { ModeToggle } from "@/components/theme-toggle";
 import NotificationsBell from "./notifications-bell";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 interface DashboardHeaderProps {
   onSearch?: (query: string) => void;
@@ -38,12 +39,21 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
       <header className="sticky top-0 z-20 bg-background border-b">
         <div className="px-4 lg:px-6 py-3">
           <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="rounded-lg bg-primary p-2 text-primary-foreground">
-                <Home className="h-5 w-5" />
-              </div>
-              <span className="text-xl font-bold text-foreground">AawasHub</span>
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link href="/" className="flex items-center gap-2">
+                <Image
+                  src="/home-logo.png"
+                  alt="Awaas Hub Logo"
+                  width={40}
+                  height={40}
+                  className="h-10 w-auto"
+                  priority
+                />
+                <span className="sr-only">Awaas Hub</span>
+              </Link>
+              <div className="h-6 w-px bg-border" />
+              <h1 className="text-lg font-semibold text-foreground">Properties</h1>
+            </div>
 
             <div className="flex items-center gap-2">
               <ModeToggle />
