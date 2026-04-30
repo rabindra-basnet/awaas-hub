@@ -70,22 +70,20 @@ export const auth = betterAuth({
     }),
     admin({
       adminRole: "admin",
-      impersonationSessionDuration: 60 * 60 * 8, // 8h
+      impersonationSessionDuration: 60 * 60 * 8,
     }),
   ],
 
   user: {
     additionalFields: {
+      // Defined here so signUp.email({ role }) accepts it from the client.
+      // The admin plugin uses adminRole:"admin" for its own checks but does
+      // not block this field being passed on user creation.
       role: {
         type: "string",
         default: null,
         input: true,
       },
-      // subscription: {
-      //   type: "string",
-      //   default: null,
-      //   input: true,
-      // },
     },
     constraints: {
       email: {
