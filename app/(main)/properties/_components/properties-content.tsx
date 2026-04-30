@@ -8,7 +8,7 @@ import {
   X, ChevronDown, ChevronUp, ArrowUpDown,
   MapPin, Ruler, Heart, MoreHorizontal,
   Pencil, CheckCircle2,
-  Home, RotateCcw,
+  Home, RotateCcw, Plus,
   Building2, Navigation, Clock, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -284,11 +284,21 @@ export default function PropertiesContent() {
                 <span className="text-xs ml-1 text-muted-foreground/60">(more loading…)</span>
               )}
             </p>
-            <div className="flex items-center gap-1.5 border border-border/50 rounded-lg px-2.5 py-1.5">
-              <ArrowUpDown size={12} className="text-muted-foreground shrink-0" />
-              <select value={sort} onChange={e => setSort(e.target.value as SortKey)} className="text-xs font-medium bg-transparent outline-none text-foreground cursor-pointer">
-                {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+            <div className="flex items-center gap-2">
+              {canManage && (
+                <button
+                  onClick={() => router.push("/properties/new")}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-3 py-1.5 transition-colors"
+                >
+                  <Plus size={13} /> New Property
+                </button>
+              )}
+              <div className="flex items-center gap-1.5 border border-border/50 rounded-lg px-2.5 py-1.5">
+                <ArrowUpDown size={12} className="text-muted-foreground shrink-0" />
+                <select value={sort} onChange={e => setSort(e.target.value as SortKey)} className="text-xs font-medium bg-card text-foreground outline-none cursor-pointer">
+                  {SORT_OPTIONS.map(o => <option key={o.value} value={o.value} className="bg-card text-foreground">{o.label}</option>)}
+                </select>
+              </div>
             </div>
           </div>
 
