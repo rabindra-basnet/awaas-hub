@@ -72,7 +72,7 @@ export function LoginComponent() {
 
               toast.error(
                 isEmailIssue
-                  ? `${message || "Email not verified"}. Please verify your email address`
+                  ? `${message || "Email not verified"}`
                   : message || "Login failed",
               );
             },

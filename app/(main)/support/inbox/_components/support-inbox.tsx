@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   useAdminSupportInbox,
   useAdminConversation,
@@ -23,17 +24,39 @@ import {
   Search,
   CheckCheck,
   Clock,
+  Home,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { Input } from "@/components/ui/input";
 
 export default function SupportInbox() {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const idFromUrl = searchParams.get("id");
+
+  // manualSelectedId wins over the URL param; allows clicking rows to change selection
+  const [manualSelectedId, setManualSelectedId] = useState<string | null>(null);
+  const selectedId = manualSelectedId ?? idFromUrl;
+
   const [search, setSearch] = useState("");
   const { data: inboxData, isLoading } = useAdminSupportInbox();
+  const scrolledForRef = useRef<string | null>(null);
 
   useAdminInboxChannel();
-  useSupportChannel(selectedId ?? undefined, ["support-conversation", selectedId]);
+  useSupportChannel(selectedId ?? undefined, [
+    "support-conversation",
+    selectedId,
+  ]);
+
+  // Scroll sidebar row into view the first time this conversation is auto-selected
+  useEffect(() => {
+    if (!selectedId || !inboxData || scrolledForRef.current === selectedId) return;
+    scrolledForRef.current = selectedId;
+    requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-conv-id="${selectedId}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }, [inboxData, selectedId]);
 
   const conversations = inboxData?.conversations ?? [];
   const filtered = conversations.filter(
@@ -81,7 +104,7 @@ export default function SupportInbox() {
                   key={conv._id}
                   conversation={conv}
                   isSelected={selectedId === conv._id}
-                  onSelect={() => setSelectedId(conv._id)}
+                  onSelect={() => setManualSelectedId(conv._id)}
                 />
               ))
             )}
@@ -131,6 +154,7 @@ function ConversationRow({
 
   return (
     <button
+      data-conv-id={conversation._id}
       onClick={onSelect}
       className={cn(
         "w-full text-left px-3 py-3 border-b border-border/40 transition-colors group",
@@ -296,6 +320,12 @@ function ConversationView({ conversationId }: { conversationId: string }) {
                   {conv.propertyTitle}
                 </span>
               )}
+              {conv?.propertyId && (
+                <span className="flex items-center gap-1 text-[11px] text-primary/70 font-medium">
+                  <Home className="h-3 w-3" />
+                 ID: {conv.propertyId}
+                </span>
+              )}
               {conv?.lastMessageAt && (
                 <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                   <Clock className="h-3 w-3" />
@@ -361,7 +391,9 @@ function ConversationView({ conversationId }: { conversationId: string }) {
         </div>
         <p className="text-[10px] text-muted-foreground mt-1.5 text-right">
           Press{" "}
-          <kbd className="font-mono bg-muted px-1 rounded text-[9px]">Enter</kbd>{" "}
+          <kbd className="font-mono bg-muted px-1 rounded text-[9px]">
+            Enter
+          </kbd>{" "}
           to send
         </p>
       </div>
@@ -376,7 +408,9 @@ function AdminMessageBubble({ message }: { message: SupportMessage }) {
   const isOptimistic = message._id.startsWith("optimistic-");
 
   return (
-    <div className={cn("flex gap-2.5", isAdmin ? "flex-row-reverse" : "flex-row")}>
+    <div
+      className={cn("flex gap-2.5", isAdmin ? "flex-row-reverse" : "flex-row")}
+    >
       {/* Avatar */}
       {!isAdmin && (
         <Avatar className="w-7 h-7 shrink-0 mt-0.5">

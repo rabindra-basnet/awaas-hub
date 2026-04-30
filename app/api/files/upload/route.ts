@@ -10,7 +10,7 @@ import { getDb } from "@/lib/server/db";
 import Files from "@/lib/models/Files";
 import { uploadFile } from "@/lib/server/r2-client"; // your existing function
 import crypto from "crypto";
-import { hasPermission, Permission, Role } from "@/lib/rbac";
+import { hasAnyPermission, Permission, Role } from "@/lib/rbac";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) return unauthorized();
 
     const role = session.user.role as Role;
-    if (!hasPermission(role, Permission.MANAGE_PROPERTIES)) return forbidden();
+    if (!hasAnyPermission(role, [Permission.MANAGE_FILES, Permission.MANAGE_PROPERTIES])) return forbidden();
 
     const userId = session.user.id;
     const formData = await req.formData();

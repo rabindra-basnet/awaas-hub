@@ -7,12 +7,14 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import AppSidebar from "./_components/app-sidebar";
 import DashboardHeader from "./_components/dashboard-header";
 import AccessDeniedPage from "@/components/access-denied";
-import { Role, Permission, hasAnyPermission } from "@/lib/rbac";
+import { Role, Permission, hasAnyPermission, hasPermission } from "@/lib/rbac";
 import { AnonymousProvider } from "../guest-provider";
+import { DASHBOARD_PAGES } from "./_components/pages-permissions";
 
 const PUBLIC_PATHS = [/^\/properties$/, /^\/properties\/[a-fA-F0-9]{24}$/];
 
-const FULLSCREEN_PATHS = [/^\/properties$/, /^\/properties\/.+/];
+const FULLSCREEN_PATHS = [/^\/properties\/.+/];
+const CONTAINED_PATHS = [/^\/properties$/];
 
 export default function DashboardProvider({
   children,
@@ -41,6 +43,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     [pathname],
   );
 
+  const isContainedRoute = useMemo(
+    () => !!pathname && CONTAINED_PATHS.some((p) => p.test(pathname)),
+    [pathname],
+  );
+
   const isAnonymous = session?.user?.isAnonymous === true;
 
   useEffect(() => {
@@ -59,8 +66,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   if (!isPublicPath && !session) return null;
 
   // RBAC for authenticated (non-guest) users
-  if (session && !isAnonymous && !isPublicPath) {
+  if (session && !isAnonymous && !isPublicPath && pathname) {
     const role = session.user.role as Role;
+
+    // 1. Entry guard — can this role enter the dashboard at all?
     if (
       !hasAnyPermission(role, [
         Permission.VIEW_DASHBOARD,
@@ -68,6 +77,21 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       ])
     ) {
       return <AccessDeniedPage />;
+    }
+
+    // 2. Per-route guard — does this role have the specific page permission?
+    const currentPage = DASHBOARD_PAGES.find(
+      (page) =>
+        pathname === page.href ||
+        pathname.startsWith(page.href + "/"),
+    );
+    if (currentPage) {
+      if (!hasPermission(role, currentPage.permission)) {
+        return <AccessDeniedPage />;
+      }
+      if (currentPage.onlyForRoles && !currentPage.onlyForRoles.includes(role)) {
+        return <AccessDeniedPage />;
+      }
     }
   }
 
@@ -82,7 +106,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         {session && !isAnonymous && <AppSidebar session={session} />}
         <main className="flex-1 flex flex-col min-h-0">
           <DashboardHeader />
-          <div className="flex-1 min-h-0 overflow-auto">{children}</div>
+          <div className={`flex-1 min-h-0 ${isContainedRoute ? "overflow-hidden" : "overflow-auto"}`}>{children}</div>
         </main>
       </div>
     </SidebarProvider>

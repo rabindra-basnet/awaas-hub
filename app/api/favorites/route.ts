@@ -33,10 +33,7 @@ export async function GET(_: NextRequest) {
 
     await getDb();
 
-    const favorites =
-      role === Role.ADMIN
-        ? await Favorite.find({}).lean()
-        : await Favorite.find({ userId: session.user.id }).lean();
+    const favorites = await Favorite.find({ userId: session.user.id }).lean();
 
     if (!favorites.length) return NextResponse.json([]);
 

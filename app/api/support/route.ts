@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const propertyId = searchParams.get("propertyId") ?? "";
-
+    const propertyTitle = searchParams.get("propertyTitle") ?? "";
     const userId = session.user.id;
 
     let conversation = await SupportConversation.findOne({ userId, propertyId }).lean();
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
         userName: session.user.name ?? "User",
         userRole: role,
         propertyId,
-        propertyTitle: "",
+        propertyTitle: propertyTitle,
       });
       conversation = created.toObject();
     } else {
