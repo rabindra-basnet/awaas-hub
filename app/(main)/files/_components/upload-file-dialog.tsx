@@ -63,15 +63,12 @@ export function UploadFileDialog({
         <Button>Upload New File</Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-2xl bg-slate-800 text-white">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Upload File</DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            Property ID: <b>{propertyId || "None"}</b>
-          </p>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(submit)} className="space-y-6 mt-6">
+        <form onSubmit={handleSubmit(submit)} className="space-y-5 mt-2">
           <Controller
             name="file"
             control={control}
@@ -86,11 +83,11 @@ export function UploadFileDialog({
                 />
 
                 {file ? (
-                  <div className="flex items-center gap-4 p-5 bg-slate-900 rounded-xl border border-slate-700">
-                    <Upload className="w-8 h-8 text-primary" />
-                    <div className="flex-1">
-                      <p className="truncate">{file.name}</p>
-                      <p className="text-sm text-muted-foreground">
+                  <div className="flex items-center gap-3 p-4 rounded-xl border border-border/60 bg-muted/20">
+                    <Upload className="w-7 h-7 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">
                         {(file.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
@@ -98,18 +95,19 @@ export function UploadFileDialog({
                       type="button"
                       variant="ghost"
                       size="icon"
+                      className="h-8 w-8 shrink-0"
                       onClick={() => reset({ file: undefined })}
                     >
-                      <Trash />
+                      <Trash size={14} />
                     </Button>
                   </div>
                 ) : (
                   <label
                     htmlFor="file-upload"
-                    className="flex h-56 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary/50 bg-slate-900/40"
+                    className="flex h-40 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors gap-2"
                   >
-                    <Upload className="h-12 w-12 mb-4" />
-                    <p>Click or drag file here</p>
+                    <Upload className="h-8 w-8 text-muted-foreground/60" />
+                    <p className="text-sm text-muted-foreground">Click to select a file</p>
                   </label>
                 )}
               </>

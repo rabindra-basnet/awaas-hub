@@ -13,8 +13,10 @@ import {
   File,
   Speaker,
   SpeakerIcon,
+  MessageCircle,
+  Inbox,
 } from "lucide-react";
-import { Permission } from "@/lib/rbac";
+import { Permission, Role } from "@/lib/rbac";
 
 export type DashboardPage = {
   title: string;
@@ -22,6 +24,7 @@ export type DashboardPage = {
   href: string;
   permission: Permission;
   icons: React.ComponentType<{ className?: string }>;
+  onlyForRoles?: Role[];
 };
 
 export const DASHBOARD_PAGES: DashboardPage[] = [
@@ -74,5 +77,29 @@ export const DASHBOARD_PAGES: DashboardPage[] = [
     href: "/analytics",
     permission: Permission.VIEW_ANALYTICS,
     icons: BarChart3,
+  },
+  {
+    title: "Support",
+    description: "Chat with our support team",
+    href: "/support",
+    permission: Permission.VIEW_SUPPORT_CHAT,
+    icons: MessageCircle,
+    onlyForRoles: [Role.BUYER, Role.SELLER],
+  },
+  {
+    title: "Support Inbox",
+    description: "Manage user support conversations",
+    href: "/support/inbox",
+    permission: Permission.MANAGE_SUPPORT_CHAT,
+    icons: Inbox,
+    onlyForRoles: [Role.ADMIN],
+  },
+  {
+    title: "Users",
+    description: "Manage user accounts and roles",
+    href: "/users",
+    permission: Permission.MANAGE_USERS,
+    icons: Users,
+    onlyForRoles: [Role.ADMIN],
   },
 ];

@@ -109,15 +109,6 @@ const ForgotPasswordEmail = (props: ForgotPasswordEmailProps) => {
               <Text className="m-0 mb-[8px] text-[12px] text-gray-500 leading-[16px]">
                 This email was sent to {email}
               </Text>
-              <Text className="m-0 mb-[8px] text-[12px] text-gray-500 leading-[16px]">
-                Company Name, 123 Business Street, City, State 12345
-              </Text>
-              <Text className="m-0 text-[12px] text-gray-500 leading-[16px]">
-                © 2025 Company Name. All rights reserved.{" "}
-                <Link className="text-gray-500" href="#">
-                  Unsubscribe
-                </Link>
-              </Text>
             </Section>
           </Container>
         </Body>

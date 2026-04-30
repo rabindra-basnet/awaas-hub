@@ -62,7 +62,19 @@ export function LoginComponent() {
               router.replace(redirectTo);
             },
             onError: (ctx: any) => {
-              toast.error(ctx.error.message || "Login failed");
+              const message = ctx?.error?.message ?? "";
+
+              console.log(message);
+
+              const isEmailIssue =
+                message.toLowerCase().includes("email") ||
+                message.toLowerCase().includes("verify");
+
+              toast.error(
+                isEmailIssue
+                  ? `${message || "Email not verified"}. Please verify your email address`
+                  : message || "Login failed",
+              );
             },
           },
         );

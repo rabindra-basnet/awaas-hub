@@ -14,10 +14,13 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { authClient } from "@/lib/client/auth-client"; // Better Auth client
+import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +45,7 @@ export default function ForgotPasswordPage() {
             "Password reset email sent! Check your inbox for instructions.",
           );
           setEmail("");
+          router.push("/login");
         }
       } catch (err: any) {
         toast.error(err.message || "Failed to send reset email");

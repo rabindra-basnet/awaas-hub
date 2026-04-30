@@ -37,31 +37,3 @@ export interface Favorite {
   createdAt: Date;
 }
 
-export type AppointmentStatus =
-  | "scheduled"
-  | "completed"
-  | "cancelled"
-  | "approved";
-
-export interface Appointment {
-  _id: string;
-  title: string;
-  type: "Property Viewing" | "Inspection" | "Legal Review";
-  date: string;
-  notes?: string;
-  propertyId?: string;
-  participants: string[];
-  createdBy: string;
-  status: AppointmentStatus;
-  createdAt: string;
-  image?: string;
-}
-
-export interface AppointmentForm {
-  title: string;
-  type: "Property Viewing" | "Inspection" | "Legal Review";
-  date: string;
-  notes?: string;
-  propertyId: string;
-  image?: string;
-}

@@ -1,46 +1,13 @@
-// 'use client'
-
-// import { MapContainer, TileLayer, Marker } from 'react-leaflet'
-// import L from 'leaflet'
-// import 'leaflet/dist/leaflet.css'
-// import { useEffect } from 'react'
-
-// interface LeafletMapProps {
-//     center: [number, number]
-//     mapRef: React.MutableRefObject<L.Map | null>
-// }
-
-// export default function LeafletMap({ center, mapRef }: LeafletMapProps) {
-//     useEffect(() => {
-//         // Fix marker icon (client-only)
-//         delete (L.Icon.Default.prototype as any)._getIconUrl
-//         L.Icon.Default.mergeOptions({
-//             iconRetinaUrl:
-//                 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-//             iconUrl:
-//                 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-//             shadowUrl:
-//                 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
-//         })
-//     }, [])
-
-//     return (
-//         <MapContainer
-//             center={center}
-//             zoom={13}
-//             className="h-full w-full"
-//             ref={mapRef}
-//         >
-//             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-//             <Marker position={center} />
-//         </MapContainer>
-//     )
-// }
-
 "use client";
 
-import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { useEffect, useState } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMap,
+} from "react-leaflet";
 import { renderToStaticMarkup } from "react-dom/server";
 import L from "leaflet";
 import { MapPin, MapPinned } from "lucide-react";
@@ -65,6 +32,12 @@ function MapUpdater({ center, mapRef }: MapUpdaterProps) {
   return null;
 }
 
+// Detect dark mode safely
+function isDarkMode() {
+  if (typeof window === "undefined") return false;
+  return document.documentElement.classList.contains("dark");
+}
+
 interface LeafletMapProps {
   center: [number, number];
   mapRef: React.MutableRefObject<any>;
@@ -76,15 +49,34 @@ export default function LeafletMap({
   mapRef,
   isUserLocation = false,
 }: LeafletMapProps) {
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    const checkTheme = () => setDark(isDarkMode());
+
+    checkTheme();
+
+    const observer = new MutationObserver(() => {
+      checkTheme();
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   const SelectedIcon = isUserLocation ? MapPinned : MapPin;
+
   function createMapPinIcon() {
     const iconMarkup = renderToStaticMarkup(
       <SelectedIcon
         size={36}
         strokeWidth={2.2}
-        // color={isUserLocation ? "#16a34a" : "#0891b2"}
-        // fill={isUserLocation ? "#16a34a" : "#0891b2"}
-      />,
+        color={isUserLocation ? "#22c55e" : "#0ea5e9"}
+      />
     );
 
     return L.divIcon({
@@ -95,6 +87,12 @@ export default function LeafletMap({
       popupAnchor: [0, -40],
     });
   }
+
+  const lightTile = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+  const darkTile =
+    "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png";
+
   return (
     <div className="h-full w-full">
       <MapContainer
@@ -104,17 +102,19 @@ export default function LeafletMap({
         className="h-full w-full"
         style={{ height: "100%", width: "100%", zIndex: 0 }}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <TileLayer url={dark ? darkTile : lightTile} />
+
         <Marker position={center} icon={createMapPinIcon()}>
           <Popup>
-            <div className="p-2">
-              <p className="font-semibold text-foreground">Selected Location</p>
+            <div className="p-2 bg-card text-foreground">
+              <p className="font-semibold">Selected Location</p>
               <p className="text-sm text-muted-foreground">
                 {center[0].toFixed(4)}, {center[1].toFixed(4)}
               </p>
             </div>
           </Popup>
         </Marker>
+
         <MapUpdater center={center} mapRef={mapRef} />
       </MapContainer>
     </div>

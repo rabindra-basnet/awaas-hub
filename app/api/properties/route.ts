@@ -33,21 +33,21 @@ export async function GET() {
     if (role === Role.ADMIN) {
       // Admin sees every property regardless of verification status
       query = {};
-    } else if (
-      role === Role.SELLER &&
-      userId &&
-      mongoose.Types.ObjectId.isValid(userId)
-    ) {
-      // Sellers see all of their own listings (any status)
-      query = { sellerId: new mongoose.Types.ObjectId(userId) };
-    } else {
+    }
+    // else if (
+    //   role === Role.SELLER &&
+    //   userId &&
+    //   mongoose.Types.ObjectId.isValid(userId)
+    // ) {
+    //   // Sellers see all of their own listings (any status)
+    //   query = { sellerId: new mongoose.Types.ObjectId(userId) };
+    // }
+    else {
       // Guests and buyers:
       // Only show explicitly verified docs.
       // Docs where the field is missing/null/pending are excluded
       // by requiring the field to equal "verified" AND exist.
-      query = {
-        verificationStatus: "verified",
-      };
+      query = { verificationStatus: "verified" };
     }
 
     console.log("[GET /api/properties] query:", JSON.stringify(query));

@@ -8,25 +8,25 @@ import AppSidebar from "./_components/app-sidebar";
 import DashboardHeader from "./_components/dashboard-header";
 import AccessDeniedPage from "@/components/access-denied";
 import { Role, Permission, hasAnyPermission } from "@/lib/rbac";
-// import { AnonymousProvider } from "../guest-provider";
-// import Header from "@/components/header";
+import { AnonymousProvider } from "../guest-provider";
 
-// Paths accessible without authentication
-const PUBLIC_PATHS = [
-  /^\/properties$/,
-  /^\/properties\/[a-fA-F0-9]{24}$/, // only /properties/:id
-];
+const PUBLIC_PATHS = [/^\/properties$/, /^\/properties\/[a-fA-F0-9]{24}$/];
 
-// Routes where sidebar + header should be hidden (full-screen pages)
-const FULLSCREEN_PATHS = [
-  /^\/properties\/.+/, // /properties/[id], /properties/[id]/map, /properties/[id]/contact …
-];
+const FULLSCREEN_PATHS = [/^\/properties$/, /^\/properties\/.+/];
 
-export default function DashboardLayout({
+export default function DashboardProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  return (
+    <AnonymousProvider>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </AnonymousProvider>
+  );
+}
+
+function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { data: session, isPending } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -36,7 +36,6 @@ export default function DashboardLayout({
     [pathname],
   );
 
-  // Hide chrome (sidebar + header) on full-screen routes
   const isFullscreenRoute = useMemo(
     () => !!pathname && FULLSCREEN_PATHS.some((p) => p.test(pathname)),
     [pathname],
@@ -46,12 +45,20 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (isPending || isPublicPath) return;
-    if (!session || isAnonymous) router.replace("/login");
-  }, [isPending, isPublicPath, session, isAnonymous, router]);
+
+    // Logic: If there is NO session at all (not even guest), send to login.
+    // If you want Guests to be able to see the dashboard, do NOT check for isAnonymous here.
+    if (!session) {
+      router.replace("/login");
+    }
+  }, [isPending, isPublicPath, session, router]);
 
   if (isPending) return null;
-  if (!isPublicPath && (!session || isAnonymous)) return null;
 
+  // If not public and no session (and not anonymous), block render
+  if (!isPublicPath && !session) return null;
+
+  // RBAC for authenticated (non-guest) users
   if (session && !isAnonymous && !isPublicPath) {
     const role = session.user.role as Role;
     if (
@@ -64,24 +71,18 @@ export default function DashboardLayout({
     }
   }
 
-  // Full-screen layout — no sidebar, no header, children fill the viewport
   if (isFullscreenRoute) {
-    return (
-      <>
-        {/*<Header />*/}
-        {children}
-      </>
-    );
+    return <>{children}</>;
   }
 
-  // Standard dashboard layout
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="flex h-screen w-full">
+        {/* Only show sidebar to registered users */}
         {session && !isAnonymous && <AppSidebar session={session} />}
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col min-h-0">
           <DashboardHeader />
-          <div className="w-full overflow-auto">{children}</div>
+          <div className="flex-1 min-h-0 overflow-auto">{children}</div>
         </main>
       </div>
     </SidebarProvider>

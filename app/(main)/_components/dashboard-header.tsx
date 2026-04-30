@@ -1,9 +1,11 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { Bell, Search } from "lucide-react";
-import { useSession } from "@/lib/client/auth-client";
+import { usePathname, useRouter } from "next/navigation";
+import { Search, UserX } from "lucide-react";
+import { useSession, authClient } from "@/lib/client/auth-client";
 import { ModeToggle } from "@/components/theme-toggle";
+import NotificationsBell from "./notifications-bell";
+import { Button } from "@/components/ui/button";
 
 interface DashboardHeaderProps {
   onSearch?: (query: string) => void;
@@ -11,11 +13,13 @@ interface DashboardHeaderProps {
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
+
+  const impersonatedBy = (session?.session as any)?.impersonatedBy as string | undefined;
 
   const skipHeaderPaths = [
     "/properties/",
-    "/appointments/",
     "/files",
     "/payment",
   ];
@@ -41,6 +45,28 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
 
   return (
     <header className="sticky top-0 z-20 bg-background border-b">
+      {/* Impersonation banner */}
+      {impersonatedBy && (
+        <div className="flex items-center justify-between gap-3 bg-amber-500 text-white px-4 py-2 text-sm font-medium">
+          <div className="flex items-center gap-2">
+            <UserX className="h-4 w-4 shrink-0" />
+            <span>
+              You are impersonating <span className="font-bold">{session?.user?.name}</span>
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 px-2 text-xs border-white/40 text-white hover:bg-white/20 hover:text-white"
+            onClick={async () => {
+              await authClient.admin.stopImpersonating();
+              router.push("/settings");
+            }}
+          >
+            Stop Impersonating
+          </Button>
+        </div>
+      )}
       <div className="px-4 lg:px-6 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div>
@@ -64,9 +90,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
               </div>
             )}
 
-            <button className="h-10 w-10 rounded-lg border flex items-center justify-center hover:bg-accent transition-colors">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-            </button>
+            <NotificationsBell />
 
             <ModeToggle />
           </div>

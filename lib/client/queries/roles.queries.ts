@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/client/query-client";
+import { getQueryClient } from "@/lib/query-client";
 import { toast } from "sonner";
 
 /* ======================
@@ -33,7 +33,7 @@ export const useUpdateRoleMutation = () =>
     },
     onSuccess: () => {
       // keep admin/user lists in sync if present
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      getQueryClient().invalidateQueries({ queryKey: ["users"] });
       toast.success("User role updated successfully");
     },
     onError: (err: Error) => {

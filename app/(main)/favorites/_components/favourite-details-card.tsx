@@ -1,142 +1,10 @@
-// "use client";
-
-// import React from "react";
-// import Image from "next/image";
-// import { useRouter } from "next/navigation";
-// import { MapPin, Banknote, Building2, Trash2 } from "lucide-react";
-// import { Card, CardContent } from "@/components/ui/card";
-// import { Button } from "@/components/ui/button";
-// import { Badge } from "@/components/ui/badge";
-// import { useToggleFavorite } from "@/lib/client/queries/properties.queries";
-
-// interface FavouriteDetailsCardProps {
-//   property: any;
-//   onRemove: (id: string) => void;
-// }
-
-// const FALLBACK_IMAGE =
-//   "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80";
-
-// export default function FavouriteDetailsCard({
-//   property,
-//   onRemove,
-// }: FavouriteDetailsCardProps) {
-//   const router = useRouter();
-
-//   const toggleFav = useToggleFavorite();
-//   const imageUrl =
-//     Array.isArray(property.images) && property.images.length > 0
-//       ? property.images[0]
-//       : FALLBACK_IMAGE;
-
-//   return (
-//     <Card className="group overflow-hidden rounded-[1.5rem] border-border/40 shadow-md bg-card transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-//       {/* ── IMAGE SECTION ── */}
-//       <div className="relative w-full h-52 overflow-hidden bg-muted">
-//         <Image
-//           src={imageUrl}
-//           alt={property.title || "Property"}
-//           fill
-//           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-//           className="object-cover transition-transform duration-700 group-hover:scale-110"
-//         />
-
-//         {/* Gradient overlay for badges readability */}
-//         <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-black/10" />
-
-//         {/* Top-left: ID badge */}
-//         <div className="absolute top-3 left-3">
-//           <Badge className="bg-white/90 backdrop-blur-sm text-black border-none text-[9px] font-black shadow-lg px-2 py-0.5">
-//             #{property._id.toString().slice(-5).toUpperCase()}
-//           </Badge>
-//         </div>
-
-//         {/* Top-right: Status badge */}
-//         {property.status && (
-//           <div className="absolute top-3 right-3">
-//             <Badge className="bg-primary/90 backdrop-blur-sm text-primary-foreground text-[9px] font-black uppercase shadow-lg px-2 py-0.5">
-//               {property.status}
-//             </Badge>
-//           </div>
-//         )}
-
-//         {/* Bottom-left: Price overlay on image */}
-//         <div className="absolute bottom-3 left-3">
-//           <div className="bg-black/60 backdrop-blur-sm rounded-xl px-3 py-1.5 flex items-center gap-1.5">
-//             <Banknote size={12} className="text-white/80" />
-//             <span className="text-white text-[11px] font-black">
-//               NPR. {new Intl.NumberFormat("en-IN").format(property.price)}
-//             </span>
-//           </div>
-//         </div>
-
-//         {/* Bottom-right: Category pill */}
-//         {property.category && (
-//           <div className="absolute bottom-3 right-3">
-//             <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-2.5 py-1 flex items-center gap-1">
-//               <Building2 size={10} className="text-white" />
-//               <span className="text-white text-[9px] font-bold uppercase">
-//                 {property.category}
-//               </span>
-//             </div>
-//           </div>
-//         )}
-//       </div>
-
-//       {/* ── CONTENT SECTION ── */}
-//       <CardContent className="p-4 space-y-3">
-//         {/* Title */}
-//         <h3 className="font-bold text-[13px] leading-tight line-clamp-1">
-//           {property.title || "Untitled Property"}
-//         </h3>
-
-//         {/* Location */}
-//         <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-//           <MapPin size={12} className="text-destructive shrink-0" />
-//           <span className="truncate">{property.location || "N/A"}</span>
-//         </div>
-
-//         {/* Divider */}
-//         <div className="h-px bg-border/50" />
-
-//         {/* Actions */}
-//         <div className="flex gap-2 pt-0.5">
-//           <Button
-//             className="flex-1 h-9 rounded-xl font-bold text-[10px] uppercase tracking-widest"
-//             onClick={() =>
-//               router.push(`/properties/${property._id}?from=favorites`)
-//             }
-//           >
-//             View Details
-//           </Button>
-//           <Button
-//             variant="outline"
-//             size="icon"
-//             className="h-9 w-9 rounded-xl border-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors shrink-0"
-//             onClick={() =>
-//               toggleFav.mutate({
-//                 propertyId: property._id,
-//                 isFav: !!1,
-//               })
-//             }
-//           >
-//             <Trash2 size={14} />
-//           </Button>
-//         </div>
-//       </CardContent>
-//     </Card>
-//   );
-// }
-
 "use client";
 
 import React, { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { MapPin, Banknote, Building2, Trash2 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { MapPin, Heart, Tag, ArrowRight, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -148,157 +16,130 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToggleFavorite } from "@/lib/client/queries/properties.queries";
+import { cn } from "@/lib/utils";
 
-interface FavouriteDetailsCardProps {
+interface Props {
   property: any;
   onRemove: (id: string) => void;
 }
 
-const FALLBACK_IMAGE =
+const FALLBACK =
   "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80";
 
-export default function FavouriteDetailsCard({
-  property,
-  onRemove,
-}: FavouriteDetailsCardProps) {
+export default function FavouriteDetailsCard({ property, onRemove }: Props) {
   const router = useRouter();
   const toggleFav = useToggleFavorite();
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirm, setConfirm] = useState(false);
 
-  const imageUrl =
+  const image =
     Array.isArray(property.images) && property.images.length > 0
       ? property.images[0]
-      : FALLBACK_IMAGE;
+      : FALLBACK;
 
-  const handleConfirmRemove = () => {
-    // ✅ isFav: true → triggers DELETE in useToggleFavorite
-    toggleFav.mutate(
-      { propertyId: property._id, isFav: true },
-      {
-        onSuccess: () => {
-          // ✅ Also call onRemove to refetch the favorites list in parent
-          onRemove(property._id);
-          setShowConfirm(false);
-        },
-      },
-    );
-  };
+  const isSold = property.status?.toLowerCase() === "sold";
+  const statusLabel = isSold ? "Sold" : property.status === "booked" ? "Booked" : "Available";
+  const statusCls = isSold
+    ? "bg-red-500/10 text-red-600 border-red-200 dark:text-red-400"
+    : property.status === "booked"
+      ? "bg-amber-500/10 text-amber-600 border-amber-200"
+      : "bg-emerald-500/10 text-emerald-600 border-emerald-200";
 
   return (
     <>
-      <Card className="group overflow-hidden rounded-[1.5rem] border-border/40 shadow-md bg-card transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-        {/* IMAGE SECTION */}
-        <div className="relative w-full h-52 overflow-hidden bg-muted">
+      <div className="group rounded-2xl border border-border/60 bg-card overflow-hidden hover:shadow-md transition-all duration-300">
+        {/* Image */}
+        <div className="relative h-44 overflow-hidden bg-muted">
           <Image
-            src={imageUrl}
+            src={image}
             alt={property.title || "Property"}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover transition-transform duration-700 group-hover:scale-110"
+            className={cn(
+              "object-cover transition-transform duration-500 group-hover:scale-105",
+              isSold && "grayscale-[40%]",
+            )}
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
 
-          <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-black/10" />
-
-          {/* ID badge */}
+          {/* Status pill */}
           <div className="absolute top-3 left-3">
-            <Badge className="bg-white/90 backdrop-blur-sm text-black border-none text-[9px] font-black shadow-lg px-2 py-0.5">
-              #{property._id.toString().slice(-5).toUpperCase()}
-            </Badge>
+            <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold bg-background/80 backdrop-blur-sm", statusCls)}>
+              <Tag size={9} /> {statusLabel}
+            </span>
           </div>
 
-          {/* Status badge */}
-          {property.status && (
-            <div className="absolute top-3 right-3">
-              <Badge className="bg-primary/90 backdrop-blur-sm text-primary-foreground text-[9px] font-black uppercase shadow-lg px-2 py-0.5">
-                {property.status}
-              </Badge>
-            </div>
-          )}
+          {/* Remove button */}
+          <button
+            onClick={() => setConfirm(true)}
+            disabled={toggleFav.isPending}
+            className="absolute top-3 right-3 h-7 w-7 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <Heart size={13} className="fill-current text-destructive" />
+          </button>
 
-          {/* Price overlay */}
+          {/* Price */}
           <div className="absolute bottom-3 left-3">
-            <div className="bg-black/60 backdrop-blur-sm rounded-xl px-3 py-1.5 flex items-center gap-1.5">
-              <Banknote size={12} className="text-white/80" />
-              <span className="text-white text-[11px] font-black">
-                NPR. {new Intl.NumberFormat("en-IN").format(property.price)}
-              </span>
-            </div>
+            <span className="text-white text-sm font-black drop-shadow">
+              NPR {new Intl.NumberFormat("en-IN").format(property.price)}
+            </span>
           </div>
-
-          {/* Category pill */}
-          {property.category && (
-            <div className="absolute bottom-3 right-3">
-              <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-2.5 py-1 flex items-center gap-1">
-                <Building2 size={10} className="text-white" />
-                <span className="text-white text-[9px] font-bold uppercase">
-                  {property.category}
-                </span>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* CONTENT SECTION */}
-        <CardContent className="p-4 space-y-3">
-          <h3 className="font-bold text-[13px] leading-tight line-clamp-1">
-            {property.title || "Untitled Property"}
-          </h3>
-
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-            <MapPin size={12} className="text-destructive shrink-0" />
-            <span className="truncate">{property.location || "N/A"}</span>
+        {/* Body */}
+        <div className="p-4 space-y-2.5">
+          <div>
+            <h3 className="font-semibold text-sm leading-tight line-clamp-1">
+              {property.title || "Untitled Property"}
+            </h3>
+            <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+              <MapPin size={11} className="text-destructive shrink-0" />
+              <span className="truncate">{property.location || "N/A"}</span>
+            </div>
           </div>
 
-          <div className="h-px bg-border/50" />
+          {isSold && (
+            <div className="flex items-center gap-1.5 rounded-lg bg-red-500/8 border border-red-200/60 px-2.5 py-1.5">
+              <Info size={11} className="text-red-500 shrink-0" />
+              <span className="text-[11px] text-red-600 dark:text-red-400 font-medium">
+                This property has been sold
+              </span>
+            </div>
+          )}
 
-          <div className="flex gap-2 pt-0.5">
-            <Button
-              className="flex-1 h-9 rounded-xl font-bold text-[10px] uppercase tracking-widest"
-              onClick={() =>
-                router.push(`/properties/${property._id}?from=favorites`)
-              }
-            >
-              View Details
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={toggleFav.isPending}
-              className="h-9 w-9 rounded-xl border-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors shrink-0"
-              onClick={() => setShowConfirm(true)}
-            >
-              <Trash2 size={14} />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          <Button
+            size="sm"
+            variant={isSold ? "outline" : "default"}
+            className="w-full h-8 rounded-lg text-xs font-semibold gap-1.5"
+            onClick={() => router.push(`/properties/${property._id}?from=favorites`)}
+          >
+            View Details <ArrowRight size={12} />
+          </Button>
+        </div>
+      </div>
 
-      {/* ✅ Confirmation Dialog */}
-      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+      <AlertDialog open={confirm} onOpenChange={setConfirm}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Remove from Favorites?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove{" "}
-              <span className="font-semibold text-foreground">
-                {property.title}
-              </span>{" "}
-              from your favorites? You can always add it back later.
+              Remove <span className="font-semibold text-foreground">{property.title}</span> from your favorites? You can always add it back.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel
-              className="rounded-xl"
-              disabled={toggleFav.isPending}
-            >
+            <AlertDialogCancel className="rounded-xl" disabled={toggleFav.isPending}>
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={toggleFav.isPending}
-              onClick={handleConfirmRemove}
+              onClick={() =>
+                toggleFav.mutate(
+                  { propertyId: property._id, isFav: true },
+                  { onSuccess: () => { onRemove(property._id); setConfirm(false); } },
+                )
+              }
             >
-              {toggleFav.isPending ? "Removing..." : "Remove"}
+              {toggleFav.isPending ? "Removing…" : "Remove"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

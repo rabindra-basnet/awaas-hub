@@ -1,5 +1,5 @@
 import { queryOptions, useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/client/query-client";
+import { getQueryClient } from "@/lib/query-client";
 import { FeaturedProperty } from "@/app/(home)/__components/featured-properties";
 
 /* ======================
@@ -102,9 +102,28 @@ export const useToggleFavorite = () =>
       if (!res.ok) throw new Error("Failed to toggle favorite");
       return res.json();
     },
-    onSuccess: (_, { propertyId }) => {
-      queryClient.invalidateQueries({ queryKey: propertyKeys.all });
-      queryClient.invalidateQueries({
+    onMutate: async ({ propertyId, isFav }) => {
+      await getQueryClient().cancelQueries({ queryKey: propertyKeys.all });
+      const snapshot = getQueryClient().getQueriesData({ queryKey: propertyKeys.all });
+      getQueryClient().setQueriesData(
+        { queryKey: propertyKeys.all },
+        (old: any[] | undefined) =>
+          old?.map((p) =>
+            p._id === propertyId ? { ...p, isFavorite: !isFav } : p,
+          ) ?? old,
+      );
+      return { snapshot };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.snapshot) {
+        for (const [key, data] of context.snapshot) {
+          getQueryClient().setQueryData(key, data);
+        }
+      }
+    },
+    onSettled: (_, __, { propertyId }) => {
+      getQueryClient().invalidateQueries({ queryKey: propertyKeys.all });
+      getQueryClient().invalidateQueries({
         queryKey: propertyKeys.detail(propertyId),
       });
     },
@@ -113,10 +132,8 @@ export const useToggleFavorite = () =>
 /* ======================
    CREATE
 ====================== */
-export const useCreateProperty = () => {
-  const toggleFav = useToggleFavorite();
-
-  return useMutation({
+export const useCreateProperty = () =>
+  useMutation({
     mutationFn: async (data: PropertyForm & { fileIds: string[] }) => {
       const res = await fetch("/api/properties/new", {
         method: "POST",
@@ -126,16 +143,13 @@ export const useCreateProperty = () => {
       if (!res.ok) throw new Error("Failed to create property");
       return res.json();
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({
+    onSuccess: () => {
+      getQueryClient().invalidateQueries({
         queryKey: propertyKeys.all,
         exact: false,
       });
-      // initialise favorite record on backend
-      toggleFav.mutate({ propertyId: data.property._id, isFav: false });
     },
   });
-};
 
 /* ======================
    UPDATE
@@ -158,9 +172,9 @@ export const useUpdateProperty = () =>
       return res.json();
     },
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: propertyKeys.all });
-      queryClient.invalidateQueries({ queryKey: propertyKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: propertyKeys.images(id) });
+      getQueryClient().invalidateQueries({ queryKey: propertyKeys.all });
+      getQueryClient().invalidateQueries({ queryKey: propertyKeys.detail(id) });
+      getQueryClient().invalidateQueries({ queryKey: propertyKeys.images(id) });
     },
   });
 
@@ -175,9 +189,9 @@ export const useDeleteProperty = () =>
       return res.json();
     },
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: propertyKeys.all });
-      queryClient.removeQueries({ queryKey: propertyKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: propertyKeys.images(id) });
+      getQueryClient().invalidateQueries({ queryKey: propertyKeys.all });
+      getQueryClient().removeQueries({ queryKey: propertyKeys.detail(id) });
+      getQueryClient().invalidateQueries({ queryKey: propertyKeys.images(id) });
     },
   });
 

@@ -6,6 +6,7 @@ import { admin, anonymous } from "better-auth/plugins";
 import { lastLoginMethod } from "better-auth/plugins";
 import { hashPassword, verifyPassword } from "./password";
 import { sendResetPasswordEmail } from "../emails/send-reset-email";
+import { sendVerifyEmail } from "../emails/send-verify-email";
 
 if (!process.env.BETTER_AUTH_SECRET) {
   throw new Error("❌ BETTER_AUTH_SECRET is not defined");
@@ -23,18 +24,28 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
 
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendVerifyEmail({
+        email: user.email,
+        name: user.name ?? "Customer",
+        url: url as string,
+      });
+    },
+    sendOnSignUp: true,
+  },
   emailAndPassword: {
     enabled: true,
     password: {
       hash: hashPassword,
       verify: verifyPassword,
     },
-    requireEmailVerification: false,
+    requireEmailVerification: true,
     autoSignIn: false,
     sendResetPassword: async ({ user, url, token }, _request) => {
       await sendResetPasswordEmail({
         email: user.email,
-        name: user.name ?? null,
+        name: user.name ?? "Customer",
         url,
       });
     },
@@ -56,6 +67,10 @@ export const auth = betterAuth({
     anonymous({
       generateName: () => "Guest",
       emailDomainName: "awaashub.com",
+    }),
+    admin({
+      adminRole: "admin",
+      impersonationSessionDuration: 60 * 60 * 8, // 8h
     }),
   ],
 
