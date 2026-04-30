@@ -4,12 +4,10 @@ export interface Stats {
   totalUsers: number;
   totalProperties: number;
   availableProperties: number;
-  totalAppointments: number;
   totalFavorites: number;
 }
 
 export interface ChartData {
-  appointmentsByStatus: { _id: string; count: number }[];
   propertiesByStatus: { _id: string; count: number }[];
 }
 
