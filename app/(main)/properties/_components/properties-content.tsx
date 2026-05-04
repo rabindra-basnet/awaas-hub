@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   X,
   ChevronDown,
@@ -74,6 +74,7 @@ interface Filters {
   maxPrice: string;
   negotiable: boolean;
   verified: boolean;
+  pendingVerification: boolean;
 }
 const EMPTY: Filters = {
   search: "",
@@ -84,14 +85,17 @@ const EMPTY: Filters = {
   maxPrice: "",
   negotiable: false,
   verified: false,
+  pendingVerification: false,
 };
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 export default function PropertiesContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, isPending } = useSession();
   const isAnonymous = session?.user?.isAnonymous === true;
   const isGuest = isPending || !session || isAnonymous;
+  const isAdmin = !isGuest && session?.user?.role === Role.ADMIN;
   const canManage =
     !isGuest &&
     hasPermission(session?.user?.role as Role, Permission.MANAGE_PROPERTIES);
@@ -108,7 +112,10 @@ export default function PropertiesContent() {
   const deleteProperty = useDeleteProperty();
   const toggleFav = useToggleFavorite();
 
-  const [filters, setFilters] = useState<Filters>(EMPTY);
+  const [filters, setFilters] = useState<Filters>(() => ({
+    ...EMPTY,
+    pendingVerification: searchParams.get("verification") === "pending",
+  }));
   const [sort, setSort] = useState<SortKey>("newest");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
@@ -169,6 +176,7 @@ export default function PropertiesContent() {
     !!filters.maxPrice ||
     filters.negotiable ||
     filters.verified ||
+    filters.pendingVerification ||
     !!filters.search;
 
   const counts = useMemo(() => {
@@ -219,6 +227,8 @@ export default function PropertiesContent() {
     if (filters.negotiable) list = list.filter((p) => p.negotiable);
     if (filters.verified)
       list = list.filter((p) => p.verificationStatus === "verified");
+    if (filters.pendingVerification)
+      list = list.filter((p) => p.verificationStatus === "pending" || !p.verificationStatus);
     const ts = (p: any) => (p.createdAt ? new Date(p.createdAt).getTime() : 0);
     list.sort((a, b) => {
       if (sort === "oldest") return ts(a) - ts(b);
@@ -286,6 +296,7 @@ export default function PropertiesContent() {
             clearAll={clearAll}
             toggle={toggle}
             patch={patch}
+            isAdmin={isAdmin}
           />
         </div>
       </aside>
@@ -756,6 +767,7 @@ interface FilterPanelProps {
   clearAll: () => void;
   toggle: (k: "statuses" | "locations" | "categories", v: string) => void;
   patch: <K extends keyof Filters>(k: K, v: Filters[K]) => void;
+  isAdmin: boolean;
 }
 function FilterPanel({
   filters,
@@ -764,6 +776,7 @@ function FilterPanel({
   clearAll,
   toggle,
   patch,
+  isAdmin,
 }: FilterPanelProps) {
   return (
     <div className="divide-y divide-border/50">
@@ -865,6 +878,25 @@ function FilterPanel({
           Verified only
         </CheckItem>
       </Accordion>
+
+      {isAdmin && (
+        <Accordion label="Verification Status" open={filters.pendingVerification}>
+          <CheckItem
+            checked={filters.pendingVerification}
+            onChange={() => patch("pendingVerification", !filters.pendingVerification)}
+          >
+            <span className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
+            Pending review
+          </CheckItem>
+          <CheckItem
+            checked={filters.verified}
+            onChange={() => patch("verified", !filters.verified)}
+          >
+            <span className="w-2 h-2 rounded-full shrink-0 bg-emerald-500" />
+            Verified
+          </CheckItem>
+        </Accordion>
+      )}
     </div>
   );
 }

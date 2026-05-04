@@ -509,7 +509,7 @@ function QuickActions({
     ? [
         { label: "All Properties",  desc: "Browse & manage listings",      href: "/properties",     icon: Building2,        accent: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
         { label: "Manage Users",    desc: "Roles, access & accounts",      href: "/users",           icon: Users,            accent: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
-        { label: "Pending Review",  desc: "Properties awaiting approval",  href: "/properties",     icon: Clock,            accent: "bg-orange-500/10 text-orange-600 dark:text-orange-400", badge: pendingCount },
+        { label: "Pending Review",  desc: "Properties awaiting approval",  href: "/properties?verification=pending", icon: Clock, accent: "bg-orange-500/10 text-orange-600 dark:text-orange-400", badge: pendingCount },
         { label: "Add Property",    desc: "List a new property",           href: "/properties/new", icon: Plus,             accent: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
         { label: "Settings",        desc: "Platform configuration",        href: "/settings",        icon: Settings,         accent: "bg-muted text-muted-foreground" },
       ]
