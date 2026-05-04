@@ -13,6 +13,12 @@ export type DashboardStat = {
 export type DashboardResponse = {
   stats: DashboardStat[];
   recentProperties: any[];
+  propertiesByStatus: { _id: string; count: number }[];
+  soldCount: number;
+  bookedCount: number;
+  pendingVerificationCount: number;
+  favoritesCount: number;
+  role: string;
 };
 
 /* ======================

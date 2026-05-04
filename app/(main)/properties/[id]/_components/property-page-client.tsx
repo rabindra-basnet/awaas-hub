@@ -35,6 +35,8 @@ import {
   LogIn,
   UserPlus,
   Shield,
+  BadgeDollarSign,
+  CalendarCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -121,7 +123,9 @@ export function PropertyPageInner({
   const prevImage = () =>
     setCurrentIndex((p) => (p === 0 ? propertyImages.length - 1 : p - 1));
 
-  const showVerifyBanner = isAdmin && property.verificationStatus === "pending";
+  const isSold = property.status === "sold";
+  const showVerifyBanner = isAdmin && property.verificationStatus === "pending" && !isSold;
+  const showSoldBanner = isSold;
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -284,20 +288,31 @@ export function PropertyPageInner({
                 onClick={() => setVerifyOpen(true)}
                 className={cn(
                   "h-8 gap-1.5 text-xs font-semibold",
-                  property.verificationStatus === "pending" &&
+                  isSold &&
+                    "border-rose-400 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-700",
+                  !isSold &&
+                    property.verificationStatus === "pending" &&
                     "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-700",
-                  property.verificationStatus === "verified" &&
+                  !isSold &&
+                    property.verificationStatus === "verified" &&
                     "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400",
-                  property.verificationStatus === "rejected" &&
+                  !isSold &&
+                    property.verificationStatus === "rejected" &&
                     "border-rose-400 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400",
                 )}
               >
-                <Shield size={13} />
-                {property.verificationStatus === "pending"
-                  ? "Pending Review"
-                  : property.verificationStatus === "verified"
-                    ? "Verified"
-                    : "Rejected"}
+                {isSold ? (
+                  <><BadgeDollarSign size={13} /> Sold</>
+                ) : (
+                  <>
+                    <Shield size={13} />
+                    {property.verificationStatus === "pending"
+                      ? "Pending Review"
+                      : property.verificationStatus === "verified"
+                        ? "Verified"
+                        : "Rejected"}
+                  </>
+                )}
               </Button>
             )}
 

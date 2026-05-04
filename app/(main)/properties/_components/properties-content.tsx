@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   X,
   ChevronDown,
@@ -74,6 +74,7 @@ interface Filters {
   maxPrice: string;
   negotiable: boolean;
   verified: boolean;
+  pendingVerification: boolean;
 }
 const EMPTY: Filters = {
   search: "",
@@ -84,14 +85,17 @@ const EMPTY: Filters = {
   maxPrice: "",
   negotiable: false,
   verified: false,
+  pendingVerification: false,
 };
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 export default function PropertiesContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, isPending } = useSession();
   const isAnonymous = session?.user?.isAnonymous === true;
   const isGuest = isPending || !session || isAnonymous;
+  const isAdmin = !isGuest && session?.user?.role === Role.ADMIN;
   const canManage =
     !isGuest &&
     hasPermission(session?.user?.role as Role, Permission.MANAGE_PROPERTIES);
@@ -108,7 +112,10 @@ export default function PropertiesContent() {
   const deleteProperty = useDeleteProperty();
   const toggleFav = useToggleFavorite();
 
-  const [filters, setFilters] = useState<Filters>(EMPTY);
+  const [filters, setFilters] = useState<Filters>(() => ({
+    ...EMPTY,
+    pendingVerification: searchParams.get("verification") === "pending",
+  }));
   const [sort, setSort] = useState<SortKey>("newest");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
@@ -169,6 +176,7 @@ export default function PropertiesContent() {
     !!filters.maxPrice ||
     filters.negotiable ||
     filters.verified ||
+    filters.pendingVerification ||
     !!filters.search;
 
   const counts = useMemo(() => {
@@ -219,6 +227,10 @@ export default function PropertiesContent() {
     if (filters.negotiable) list = list.filter((p) => p.negotiable);
     if (filters.verified)
       list = list.filter((p) => p.verificationStatus === "verified");
+    if (filters.pendingVerification)
+      list = list.filter(
+        (p) => p.verificationStatus === "pending" || !p.verificationStatus,
+      );
     const ts = (p: any) => (p.createdAt ? new Date(p.createdAt).getTime() : 0);
     list.sort((a, b) => {
       if (sort === "oldest") return ts(a) - ts(b);
@@ -286,6 +298,7 @@ export default function PropertiesContent() {
             clearAll={clearAll}
             toggle={toggle}
             patch={patch}
+            isAdmin={isAdmin}
           />
         </div>
       </aside>
@@ -598,49 +611,51 @@ function PropertyCard({
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onFavorite();
-              }}
-              className={cn(
-                "h-8 w-8 rounded-full flex items-center justify-center backdrop-blur-sm transition-all",
-                isFavorite
-                  ? "bg-white text-red-500"
-                  : "bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:bg-white hover:text-red-500",
-              )}
-            >
-              <Heart size={14} className={cn(isFavorite && "fill-current")} />
-            </button>
+          {!isSold && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFavorite();
+                }}
+                className={cn(
+                  "h-8 w-8 rounded-full flex items-center justify-center backdrop-blur-sm transition-all",
+                  isFavorite
+                    ? "bg-white text-red-500"
+                    : "bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:bg-white hover:text-red-500",
+                )}
+              >
+                <Heart size={14} className={cn(isFavorite && "fill-current")} />
+              </button>
 
-            {canManage && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="h-8 w-8 rounded-full bg-black/40 text-white flex items-center justify-center backdrop-blur-sm opacity-0 group-hover:opacity-100 hover:bg-black/70 transition-all"
-                  >
-                    <MoreHorizontal size={14} />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                  <DropdownMenuItem asChild className="gap-2 cursor-pointer">
-                    <Link href={`/properties/${p._id}/edit`}>
-                      <Pencil size={13} /> Edit
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <div className="p-1">
-                    <DeletePropertyDialog
-                      propertyId={p._id}
-                      onDelete={onDelete}
-                    />
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
+              {canManage && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-8 w-8 rounded-full bg-black/40 text-white flex items-center justify-center backdrop-blur-sm opacity-0 group-hover:opacity-100 hover:bg-black/70 transition-all"
+                    >
+                      <MoreHorizontal size={14} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                    <DropdownMenuItem asChild className="gap-2 cursor-pointer">
+                      <Link href={`/properties/${p._id}/edit`}>
+                        <Pencil size={13} /> Edit
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <div className="p-1">
+                      <DeletePropertyDialog
+                        propertyId={p._id}
+                        onDelete={onDelete}
+                      />
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
@@ -756,6 +771,7 @@ interface FilterPanelProps {
   clearAll: () => void;
   toggle: (k: "statuses" | "locations" | "categories", v: string) => void;
   patch: <K extends keyof Filters>(k: K, v: Filters[K]) => void;
+  isAdmin: boolean;
 }
 function FilterPanel({
   filters,
@@ -764,6 +780,7 @@ function FilterPanel({
   clearAll,
   toggle,
   patch,
+  isAdmin,
 }: FilterPanelProps) {
   return (
     <div className="divide-y divide-border/50">
@@ -865,6 +882,30 @@ function FilterPanel({
           Verified only
         </CheckItem>
       </Accordion>
+
+      {isAdmin && (
+        <Accordion
+          label="Verification Status"
+          open={filters.pendingVerification}
+        >
+          <CheckItem
+            checked={filters.pendingVerification}
+            onChange={() =>
+              patch("pendingVerification", !filters.pendingVerification)
+            }
+          >
+            <span className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
+            Pending review
+          </CheckItem>
+          <CheckItem
+            checked={filters.verified}
+            onChange={() => patch("verified", !filters.verified)}
+          >
+            <span className="w-2 h-2 rounded-full shrink-0 bg-emerald-500" />
+            Verified
+          </CheckItem>
+        </Accordion>
+      )}
     </div>
   );
 }

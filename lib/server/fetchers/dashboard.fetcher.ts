@@ -1,4 +1,6 @@
+import mongoose from "mongoose";
 import { Property } from "@/lib/models/Property";
+import { Favorite } from "@/lib/models/Favorite";
 import Files from "@/lib/models/Files";
 import { getSignedUrlForDownload } from "@/lib/server/r2-client";
 import { Role } from "@/lib/rbac";
@@ -26,6 +28,8 @@ export async function fetchDashboardData(
   const userId = session.user.id;
   const role = session.user.role as Role;
   const isAdmin = role === Role.ADMIN;
+  const isSeller = role === Role.SELLER;
+  const isBuyer = role === Role.BUYER;
 
   const now = new Date();
   const thisMonth = monthRange(now.getFullYear(), now.getMonth());
@@ -35,12 +39,14 @@ export async function fetchDashboardData(
     lastMonthDate.getMonth(),
   );
 
-  const propertyQuery = role === Role.SELLER ? { sellerId: userId } : {};
+  const propertyQuery = isSeller ? { sellerId: new mongoose.Types.ObjectId(userId) } : {};
+  const propertyQueryPlain = isSeller ? { sellerId: userId } : {};
 
-  const recentPropertiesRaw = await Property.find(propertyQuery)
+  // Recent properties with signed image URLs
+  const recentPropertiesRaw = await Property.find(propertyQueryPlain)
     .sort({ createdAt: -1 })
-    .limit(4)
-    .select("title location price views messagesCount")
+    .limit(5)
+    .select("title location price views messagesCount status verificationStatus")
     .lean();
 
   const recentProperties = await Promise.all(
@@ -59,6 +65,7 @@ export async function fetchDashboardData(
 
   const usersCol = db.collection("users");
 
+  // Core counts + month-over-month for trend badges
   const [
     [
       totalProperties,
@@ -67,46 +74,46 @@ export async function fetchDashboardData(
       activeListings,
       activeListingsThisMonth,
       activeListingsLastMonth,
+      soldCount,
+      soldThisMonth,
+      soldLastMonth,
     ],
     [totalUsers, usersThisMonth, usersLastMonth],
+    pendingVerificationCount,
+    favoritesCount,
+    propertiesByStatus,
   ] = await Promise.all([
     Promise.all([
-      Property.countDocuments(propertyQuery),
-      Property.countDocuments({
-        ...propertyQuery,
-        createdAt: { $gte: thisMonth.start, $lte: thisMonth.end },
-      }),
-      Property.countDocuments({
-        ...propertyQuery,
-        createdAt: { $gte: lastMonth.start, $lte: lastMonth.end },
-      }),
-      Property.countDocuments({ ...propertyQuery, status: "available" }),
-      Property.countDocuments({
-        ...propertyQuery,
-        status: "available",
-        createdAt: { $gte: thisMonth.start, $lte: thisMonth.end },
-      }),
-      Property.countDocuments({
-        ...propertyQuery,
-        status: "available",
-        createdAt: { $gte: lastMonth.start, $lte: lastMonth.end },
-      }),
+      Property.countDocuments(propertyQueryPlain),
+      Property.countDocuments({ ...propertyQueryPlain, createdAt: { $gte: thisMonth.start, $lte: thisMonth.end } }),
+      Property.countDocuments({ ...propertyQueryPlain, createdAt: { $gte: lastMonth.start, $lte: lastMonth.end } }),
+      Property.countDocuments({ ...propertyQueryPlain, status: "available" }),
+      Property.countDocuments({ ...propertyQueryPlain, status: "available", createdAt: { $gte: thisMonth.start, $lte: thisMonth.end } }),
+      Property.countDocuments({ ...propertyQueryPlain, status: "available", createdAt: { $gte: lastMonth.start, $lte: lastMonth.end } }),
+      Property.countDocuments({ ...propertyQueryPlain, status: "sold" }),
+      Property.countDocuments({ ...propertyQueryPlain, status: "sold", createdAt: { $gte: thisMonth.start, $lte: thisMonth.end } }),
+      Property.countDocuments({ ...propertyQueryPlain, status: "sold", createdAt: { $gte: lastMonth.start, $lte: lastMonth.end } }),
     ] as const),
     isAdmin
       ? Promise.all([
-        usersCol.countDocuments({ role: { $ne: Role.ADMIN } }),
-        usersCol.countDocuments({
-          role: { $ne: Role.ADMIN },
-          createdAt: { $gte: thisMonth.start, $lte: thisMonth.end },
-        }),
-        usersCol.countDocuments({
-          role: { $ne: Role.ADMIN },
-          createdAt: { $gte: lastMonth.start, $lte: lastMonth.end },
-        }),
-      ])
+          usersCol.countDocuments({ role: { $ne: Role.ADMIN } }),
+          usersCol.countDocuments({ role: { $ne: Role.ADMIN }, createdAt: { $gte: thisMonth.start, $lte: thisMonth.end } }),
+          usersCol.countDocuments({ role: { $ne: Role.ADMIN }, createdAt: { $gte: lastMonth.start, $lte: lastMonth.end } }),
+        ])
       : Promise.resolve([0, 0, 0] as const),
+    isAdmin
+      ? Property.countDocuments({ verificationStatus: "pending" })
+      : Promise.resolve(0),
+    isBuyer
+      ? Favorite.countDocuments({ userId })
+      : Promise.resolve(0),
+    Property.aggregate([
+      ...(isSeller ? [{ $match: { sellerId: new mongoose.Types.ObjectId(userId) } }] : []),
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
   ]);
 
+  // Build role-specific stat cards
   const stats: any[] = [
     {
       label: "Total Properties",
@@ -122,16 +129,50 @@ export async function fetchDashboardData(
     },
     ...(isAdmin
       ? [
-        {
-          label: "Total Users",
-          value: totalUsers,
-          icon: "Users",
-          change: calcChange(usersThisMonth, usersLastMonth),
-        },
-      ]
-      : []),
-    { label: "Revenue (MTD)", value: "NPR0.00", icon: "DollarSign", change: "0.00%" },
+          {
+            label: "Total Users",
+            value: totalUsers,
+            icon: "Users",
+            change: calcChange(usersThisMonth, usersLastMonth),
+          },
+          {
+            label: "Pending Review",
+            value: pendingVerificationCount,
+            icon: "Clock",
+            change: "0%",
+          },
+        ]
+      : isSeller
+        ? [
+            {
+              label: "Sold Properties",
+              value: soldCount,
+              icon: "TrendingUp",
+              change: calcChange(soldThisMonth, soldLastMonth),
+            },
+            { label: "Revenue (MTD)", value: "NPR 0", icon: "DollarSign", change: "0%" },
+          ]
+        : [
+            {
+              label: "Saved Properties",
+              value: favoritesCount,
+              icon: "Heart",
+              change: "0%",
+            },
+            { label: "Revenue (MTD)", value: "NPR 0", icon: "DollarSign", change: "0%" },
+          ]),
   ];
 
-  return JSON.parse(JSON.stringify({ stats, recentProperties }));
+  return JSON.parse(
+    JSON.stringify({
+      stats,
+      recentProperties,
+      propertiesByStatus,
+      soldCount,
+      bookedCount: await Property.countDocuments({ ...propertyQueryPlain, status: "booked" }),
+      pendingVerificationCount,
+      favoritesCount,
+      role,
+    }),
+  );
 }
