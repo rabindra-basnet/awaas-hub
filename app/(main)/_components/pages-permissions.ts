@@ -72,13 +72,6 @@ export const DASHBOARD_PAGES: DashboardPage[] = [
     icons: SpeakerIcon,
   },
   {
-    title: "Analytics",
-    description: "Platform insights and metrics",
-    href: "/analytics",
-    permission: Permission.VIEW_ANALYTICS,
-    icons: BarChart3,
-  },
-  {
     title: "Support Inbox",
     description: "Manage user support conversations",
     href: "/support/inbox",
