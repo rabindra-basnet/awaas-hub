@@ -29,7 +29,33 @@ async function verifyPropertyRequest({
   return res.json();
 }
 
+// ── API call ──────────────────────────────────────────────────────────────────
+async function markPropertySoldRequest(propertyId: string) {
+  const res = await fetch(`/api/properties/${propertyId}/verify`, {
+    method: "PATCH",
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? "Failed to mark property as sold");
+  }
+
+  return res.json();
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
+export function useMarkPropertySold(propertyId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => markPropertySoldRequest(propertyId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["property", propertyId] });
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+    },
+  });
+}
+
 export function useVerifyProperty(propertyId: string) {
   const queryClient = useQueryClient();
 

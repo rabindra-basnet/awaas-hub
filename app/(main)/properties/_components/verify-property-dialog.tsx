@@ -1,6 +1,13 @@
 "use client";
 import { useState } from "react";
-import { Shield, CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react";
+import {
+  Shield,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Loader2,
+  BadgeDollarSign,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   useVerifyProperty,
+  useMarkPropertySold,
   type VerificationStatus,
 } from "@/lib/client/queries/properties.verify.queries";
 import { toast } from "sonner";
@@ -64,6 +72,7 @@ interface VerifyPropertyDialogProps {
   propertyId: string;
   propertyTitle: string;
   currentStatus: VerificationStatus;
+  propertyStatus: "available" | "booked" | "sold";
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -73,11 +82,17 @@ export default function VerifyPropertyDialog({
   propertyId,
   propertyTitle,
   currentStatus,
+  propertyStatus,
   open,
   onOpenChange,
 }: VerifyPropertyDialogProps) {
   const [selected, setSelected] = useState<VerificationStatus>(currentStatus);
   const verifyMutation = useVerifyProperty(propertyId);
+  const soldMutation = useMarkPropertySold(propertyId);
+
+  const isSold = propertyStatus === "sold";
+  const isVerified = currentStatus === "verified";
+  const isAnyPending = verifyMutation.isPending || soldMutation.isPending;
 
   const isDirty = selected !== currentStatus;
   const selectedOption = STATUS_OPTIONS.find((o) => o.value === selected)!;
@@ -85,6 +100,11 @@ export default function VerifyPropertyDialog({
   const handleSubmit = async () => {
     if (!isDirty) return;
     await verifyMutation.mutateAsync(selected);
+    onOpenChange(false);
+  };
+
+  const handleMarkSold = async () => {
+    await soldMutation.mutateAsync();
     onOpenChange(false);
   };
 
@@ -180,13 +200,48 @@ export default function VerifyPropertyDialog({
           })}
         </div>
 
+        {/* Mark as Sold */}
+        <div className="pt-1 border-t border-border/50">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+            Property Sale
+          </p>
+          <Button
+            size="sm"
+            className={cn(
+              "w-full font-bold transition-colors gap-2",
+              isSold
+                ? "bg-orange-100 text-orange-700 border border-orange-300 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800 cursor-default"
+                : "bg-orange-500 hover:bg-orange-600 text-white",
+            )}
+            disabled={isSold || !isVerified || isAnyPending}
+            onClick={isSold || !isVerified ? undefined : handleMarkSold}
+          >
+            {soldMutation.isPending ? (
+              <>
+                <Loader2 size={13} className="animate-spin" />
+                Marking as sold…
+              </>
+            ) : (
+              <>
+                <BadgeDollarSign size={14} />
+                {isSold ? "Already Sold" : "Mark as Sold"}
+              </>
+            )}
+          </Button>
+          {!isVerified && !isSold && (
+            <p className="text-[11px] text-muted-foreground mt-1.5 text-center">
+              Property must be verified before it can be marked as sold
+            </p>
+          )}
+        </div>
+
         <DialogFooter className="flex gap-2 pt-1">
           <Button
             variant="outline"
             size="sm"
             className="flex-1"
             onClick={() => onOpenChange(false)}
-            disabled={verifyMutation.isPending}
+            disabled={isAnyPending}
           >
             Cancel
           </Button>
@@ -204,7 +259,7 @@ export default function VerifyPropertyDialog({
                 selected === "pending" &&
                 "bg-amber-500 hover:bg-amber-600 text-white",
             )}
-            disabled={!isDirty || verifyMutation.isPending}
+            disabled={!isDirty || isAnyPending}
             onClick={handleSubmit}
           >
             {verifyMutation.isPending ? (

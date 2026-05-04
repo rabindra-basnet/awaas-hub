@@ -12,6 +12,56 @@ import {
 import { getDb } from "@/lib/server/db";
 
 /**
+ * PATCH /api/properties/[id]/verify
+ * Admin only — marks a property's status as "sold".
+ */
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    await getDb();
+    const session = await getServerSession();
+    const role = (session?.user?.role as Role) ?? Role.GUEST;
+
+    if (!session) return unauthorized();
+    if (role !== Role.ADMIN) return forbidden();
+
+    const { id } = await params;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return badRequest("Invalid or missing property id");
+    }
+
+    const property = await Property.findById(
+      new mongoose.Types.ObjectId(id),
+    ).lean();
+
+    if (!property) {
+      return NextResponse.json(
+        { message: "Property not found" },
+        { status: 404 },
+      );
+    }
+
+    if (property.verificationStatus !== "verified") {
+      return badRequest("Only verified properties can be marked as sold");
+    }
+
+    await Property.findByIdAndUpdate(
+      new mongoose.Types.ObjectId(id),
+      [{ $set: { status: "sold", soldAt: new Date() } }],
+      { updatePipeline: true },
+    );
+
+    return NextResponse.json({ message: "Property marked as sold" });
+  } catch (err) {
+    console.error(err);
+    return internalServerError();
+  }
+}
+
+/**
  * POST /api/properties/[id]/verify
  * Body: { status: "verified" | "rejected" | "pending" }
  * Admin only — updates verificationStatus of a single property.
