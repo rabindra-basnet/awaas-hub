@@ -129,7 +129,7 @@ export default function VerifyPropertyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto [scrollbar-width:thin]">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-1">
             <div
@@ -261,55 +261,14 @@ export default function VerifyPropertyDialog({
           })}
         </div>
 
-        {/* Mark as Sold */}
+        {/* Property Sale */}
         <div className="pt-1 border-t border-border/50">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
             Property Sale
           </p>
-          <Button
-            size="sm"
-            className={cn(
-              "w-full font-bold transition-colors gap-2",
-              isSold
-                ? "bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800 cursor-default"
-                : "bg-orange-500 hover:bg-orange-600 text-white",
-            )}
-            disabled={isSold || !isVerified || isAnyPending}
-            onClick={isSold || !isVerified ? undefined : handleMarkSold}
-          >
-            {soldMutation.isPending ? (
-              <>
-                <Loader2 size={13} className="animate-spin" />
-                Marking as sold…
-              </>
-            ) : isSold ? (
-              <>
-                <BadgeDollarSign size={14} />
-                Property Sold
-              </>
-            ) : (
-              <>
-                <BadgeDollarSign size={14} />
-                Mark as Sold
-              </>
-            )}
-          </Button>
-          {!isVerified && !isSold && (
-            <p className="text-[11px] text-muted-foreground mt-1.5 text-center">
-              Property must be verified before it can be marked as sold
-            </p>
-          )}
-        </div>
 
-        {/* Revert sale — admin only, shown when sold */}
-        {isSold && (
-          <div className="pt-1 border-t border-border/50">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-              Revert Sale
-            </p>
-            <p className="text-[11px] text-muted-foreground mb-2.5 leading-relaxed">
-              Mark this property as available again if the sale fell through.
-            </p>
+          {isSold ? (
+            /* ── Sold → let admin revert to available or booked ── */
             <div className="grid grid-cols-2 gap-2">
               <Button
                 size="sm"
@@ -340,8 +299,35 @@ export default function VerifyPropertyDialog({
                 Set Booked
               </Button>
             </div>
-          </div>
-        )}
+          ) : (
+            /* ── Not sold → mark as sold ── */
+            <>
+              <Button
+                size="sm"
+                className="w-full font-bold transition-colors gap-2 bg-orange-500 hover:bg-orange-600 text-white"
+                disabled={!isVerified || isAnyPending}
+                onClick={handleMarkSold}
+              >
+                {soldMutation.isPending ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    Marking as sold…
+                  </>
+                ) : (
+                  <>
+                    <BadgeDollarSign size={14} />
+                    Mark as Sold
+                  </>
+                )}
+              </Button>
+              {!isVerified && (
+                <p className="text-[11px] text-muted-foreground mt-1.5 text-center">
+                  Property must be verified before it can be marked as sold
+                </p>
+              )}
+            </>
+          )}
+        </div>
 
         <DialogFooter className="flex gap-2 pt-1">
           <Button
