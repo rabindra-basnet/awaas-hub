@@ -33,11 +33,31 @@ async function verifyPropertyRequest({
 async function markPropertySoldRequest(propertyId: string) {
   const res = await fetch(`/api/properties/${propertyId}/verify`, {
     method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "sold" }),
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message ?? "Failed to mark property as sold");
+  }
+
+  return res.json();
+}
+
+async function revertPropertySoldRequest(
+  propertyId: string,
+  status: "available" | "booked",
+) {
+  const res = await fetch(`/api/properties/${propertyId}/verify`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "revert", status }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message ?? "Failed to revert property status");
   }
 
   return res.json();
@@ -49,6 +69,19 @@ export function useMarkPropertySold(propertyId: string) {
 
   return useMutation({
     mutationFn: () => markPropertySoldRequest(propertyId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["property", propertyId] });
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+    },
+  });
+}
+
+export function useRevertPropertySold(propertyId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (status: "available" | "booked") =>
+      revertPropertySoldRequest(propertyId, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["property", propertyId] });
       queryClient.invalidateQueries({ queryKey: ["properties"] });

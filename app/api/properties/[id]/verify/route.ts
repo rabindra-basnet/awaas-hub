@@ -13,7 +13,9 @@ import { getDb } from "@/lib/server/db";
 
 /**
  * PATCH /api/properties/[id]/verify
- * Admin only — marks a property's status as "sold".
+ * Admin only.
+ * Body: { action: "sold" } — mark as sold (must be verified first)
+ * Body: { action: "revert", status: "available" | "booked" } — revert a sold property
  */
 export async function PATCH(
   req: Request,
@@ -33,6 +35,12 @@ export async function PATCH(
       return badRequest("Invalid or missing property id");
     }
 
+    const body = await req.json().catch(() => ({}));
+    const { action, status: revertStatus } = body as {
+      action?: string;
+      status?: string;
+    };
+
     const property = await Property.findById(
       new mongoose.Types.ObjectId(id),
     ).lean();
@@ -44,6 +52,26 @@ export async function PATCH(
       );
     }
 
+    // ── Revert sold → available / booked ────────────────────────────────────
+    if (action === "revert") {
+      const allowed = ["available", "booked"];
+      if (!revertStatus || !allowed.includes(revertStatus)) {
+        return badRequest("Revert status must be 'available' or 'booked'");
+      }
+      if (property.status !== "sold") {
+        return badRequest("Only sold properties can be reverted");
+      }
+      await Property.findByIdAndUpdate(
+        new mongoose.Types.ObjectId(id),
+        [{ $set: { status: revertStatus, soldAt: null } }],
+        { updatePipeline: true },
+      );
+      return NextResponse.json({
+        message: `Property status reverted to ${revertStatus}`,
+      });
+    }
+
+    // ── Mark as sold ─────────────────────────────────────────────────────────
     if (property.verificationStatus !== "verified") {
       return badRequest("Only verified properties can be marked as sold");
     }

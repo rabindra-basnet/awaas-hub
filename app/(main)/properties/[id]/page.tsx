@@ -35,6 +35,8 @@ import {
   LogIn,
   UserPlus,
   Shield,
+  BadgeDollarSign,
+  CalendarCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -168,7 +170,9 @@ export default function PropertyPage({
   const prevImage = () =>
     setCurrentIndex((p) => (p === 0 ? propertyImages.length - 1 : p - 1));
 
-  const showVerifyBanner = isAdmin && property.verificationStatus === "pending";
+  const isSold = property.status === "sold";
+  const showSoldBanner = isSold;
+  const showVerifyBanner = isAdmin && property.verificationStatus === "pending" && !isSold;
 
   const overviewItems = [
     { label: "Type", value: category || "N/A", icon: Building2 },
@@ -251,6 +255,7 @@ export default function PropertyPage({
           propertyId={id}
           propertyTitle={title ?? "Property"}
           currentStatus={property.verificationStatus ?? "pending"}
+          propertyStatus={property.status ?? "available"}
           open={verifyOpen}
           onOpenChange={setVerifyOpen}
         />
@@ -296,20 +301,28 @@ export default function PropertyPage({
                 onClick={() => setVerifyOpen(true)}
                 className={cn(
                   "h-8 gap-1.5 text-xs font-semibold",
-                  property.verificationStatus === "pending" &&
+                  isSold &&
+                    "border-rose-400 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-700",
+                  !isSold && property.verificationStatus === "pending" &&
                     "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-700",
-                  property.verificationStatus === "verified" &&
+                  !isSold && property.verificationStatus === "verified" &&
                     "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400",
-                  property.verificationStatus === "rejected" &&
+                  !isSold && property.verificationStatus === "rejected" &&
                     "border-rose-400 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400",
                 )}
               >
-                <Shield size={13} />
-                {property.verificationStatus === "pending"
-                  ? "Pending Review"
-                  : property.verificationStatus === "verified"
-                    ? "Verified"
-                    : "Rejected"}
+                {isSold ? (
+                  <><BadgeDollarSign size={13} /> Sold</>
+                ) : (
+                  <>
+                    <Shield size={13} />
+                    {property.verificationStatus === "pending"
+                      ? "Pending Review"
+                      : property.verificationStatus === "verified"
+                        ? "Verified"
+                        : "Rejected"}
+                  </>
+                )}
               </Button>
             )}
 
@@ -338,6 +351,49 @@ export default function PropertyPage({
           </div>
         </div>
       </div>
+
+      {/* ── SOLD BANNER ── */}
+      {showSoldBanner && (
+        <div className="bg-rose-50 dark:bg-rose-950/30 border-b border-rose-200 dark:border-rose-800">
+          <div className="max-w-screen-xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-rose-500/15 flex items-center justify-center shrink-0">
+                <BadgeDollarSign size={15} className="text-rose-600 dark:text-rose-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-rose-800 dark:text-rose-300">
+                  This property has been sold
+                </p>
+                {property.soldAt ? (
+                  <p className="text-[11px] text-rose-600/70 dark:text-rose-400/70 flex items-center gap-1 mt-0.5">
+                    <CalendarCheck size={10} className="shrink-0" />
+                    Sold on{" "}
+                    {new Date(property.soldAt).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-rose-600/70 dark:text-rose-400/70 mt-0.5">
+                    No longer available for purchase
+                  </p>
+                )}
+              </div>
+            </div>
+            {isAdmin && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-3 text-xs font-semibold border-rose-300 text-rose-700 hover:bg-rose-100 dark:border-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/50 flex-shrink-0"
+                onClick={() => setVerifyOpen(true)}
+              >
+                View Status
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── PENDING BANNER — admin only ── */}
       {showVerifyBanner && (
@@ -379,7 +435,9 @@ export default function PropertyPage({
                     "object-cover transition-all duration-700",
                     isLocked
                       ? "blur-2xl scale-110 opacity-40"
-                      : "group-hover:scale-[1.02]",
+                      : isSold
+                        ? "grayscale-[45%] brightness-90 group-hover:scale-[1.02]"
+                        : "group-hover:scale-[1.02]",
                   )}
                 />
               )}
@@ -410,13 +468,21 @@ export default function PropertyPage({
               )}
 
               <div className="absolute top-4 left-4 flex gap-2 pointer-events-none">
-                <span className="bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
-                  {status || "For Sale"}
-                </span>
-                <span className="bg-background/80 backdrop-blur-md text-foreground text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full flex items-center gap-1">
-                  <CheckCircle2 size={9} className="text-green-500" />
-                  {property.verificationStatus}
-                </span>
+                {isSold ? (
+                  <span className="bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full flex items-center gap-1 shadow-md">
+                    <BadgeDollarSign size={9} /> Sold
+                  </span>
+                ) : (
+                  <span className="bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                    {status || "For Sale"}
+                  </span>
+                )}
+                {!isSold && (
+                  <span className="bg-background/80 backdrop-blur-md text-foreground text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full flex items-center gap-1">
+                    <CheckCircle2 size={9} className="text-green-500" />
+                    {property.verificationStatus}
+                  </span>
+                )}
               </div>
 
               {isLocked && (
@@ -447,7 +513,6 @@ export default function PropertyPage({
                             ? "Unlocking..."
                             : "Unlock Now"}
                         </Button>
-                        Hello world
                       </>
                     ) : (
                       <EsewaPaymentButton propertyId={id} />
@@ -506,19 +571,34 @@ export default function PropertyPage({
               </div>
             </div>
 
-            <div className="bg-muted/40 rounded-2xl px-5 py-4 border border-border/60">
-              <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-widest mb-1">
-                Asking Price
+            <div className={cn(
+              "rounded-2xl px-5 py-4 border",
+              isSold
+                ? "bg-rose-50/60 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800"
+                : "bg-muted/40 border-border/60",
+            )}>
+              <p className={cn(
+                "text-[11px] font-semibold uppercase tracking-widest mb-1",
+                isSold ? "text-rose-500 dark:text-rose-400" : "text-muted-foreground",
+              )}>
+                {isSold ? "Sold Price" : "Asking Price"}
               </p>
-              <span className="text-3xl font-black text-primary tracking-tight">
+              <span className={cn(
+                "text-3xl font-black tracking-tight",
+                isSold ? "text-rose-600 dark:text-rose-400" : "text-primary",
+              )}>
                 NPR{" "}
                 {price ? new Intl.NumberFormat("en-IN").format(price) : "N/A"}
               </span>
-              {property.negotiable && (
+              {isSold ? (
+                <span className="block mt-2 text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-full uppercase tracking-wider w-fit">
+                  Transaction Complete
+                </span>
+              ) : property.negotiable ? (
                 <span className="block mt-2 text-[10px] font-bold text-green-600 bg-green-500/10 px-2.5 py-1 rounded-full uppercase tracking-wider w-fit">
                   Negotiable
                 </span>
-              )}
+              ) : null}
             </div>
 
             <div className="grid grid-cols-3 gap-3">
@@ -616,7 +696,33 @@ export default function PropertyPage({
             )}
 
             <div className="flex flex-col gap-3 pt-1">
-              {isGuest ? (
+              {isSold && !isOwner && !isAdmin ? (
+                /* ── Sold notice for buyers/guests ── */
+                <div className="rounded-2xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/20 p-5 flex flex-col items-center text-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center">
+                    <BadgeDollarSign size={22} className="text-rose-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-rose-700 dark:text-rose-400 mb-1">
+                      This property has been sold
+                    </p>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      This listing is no longer available. Browse our other
+                      properties to find your perfect home.
+                    </p>
+                  </div>
+                  <Link href="/properties" className="w-full">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full rounded-xl border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/40"
+                    >
+                      Browse Other Properties
+                    </Button>
+                  </Link>
+                </div>
+              ) : isGuest ? (
+                /* ── Guest sign-in prompt ── */
                 <div className="rounded-2xl border border-border/60 bg-muted/20 p-5 flex flex-col items-center text-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                     <Lock size={20} className="text-primary" />
@@ -657,8 +763,8 @@ export default function PropertyPage({
                   </div>
                 </div>
               ) : (
+                /* ── Authenticated: owner / admin / buyer with credits ── */
                 <>
-                  {/* Owner sees "View My Listing" directly, others need credits */}
                   {hasFullAccess || hasContactAccess || totalCredits > 0 ? (
                     <Button
                       variant="outline"
