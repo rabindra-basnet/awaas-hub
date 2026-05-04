@@ -23,7 +23,7 @@ export function useAdminUsers() {
     queryKey: ["admin-users"],
     queryFn: async (): Promise<{ users: AdminUser[] }> => {
       const res = await fetch("/api/admin/users");
-      if (!res.ok) throw new Error("Failed to load users");
+      if (!res.ok) toast.error("Failed to load users");
       return res.json();
     },
     staleTime: 30_000,
@@ -34,8 +34,11 @@ export function useAdminUsers() {
 
 export function useChangeRole() {
   const qc = useQueryClient();
+  console.log("🧨 CHANGE ROLE MUTATION START");
   return useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      console.log("👉 userId:", userId);
+      console.log("👉 role:", role);
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -43,7 +46,7 @@ export function useChangeRole() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? "Failed to change role");
+        toast.error(err.message ?? "Failed to change role");
       }
       return res.json();
     },
@@ -55,53 +58,7 @@ export function useChangeRole() {
   });
 }
 
-// ── Ban user ──────────────────────────────────────────────────────────────────
 
-export function useBanUser() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ userId, reason }: { userId: string; reason?: string }) => {
-      const res = await fetch(`/api/admin/users/${userId}/ban`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? "Failed to ban user");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin-users"] });
-      toast.success("User banned");
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-}
-
-// ── Unban user ────────────────────────────────────────────────────────────────
-
-export function useUnbanUser() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (userId: string) => {
-      const res = await fetch(`/api/admin/users/${userId}/unban`, {
-        method: "POST",
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? "Failed to unban user");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["admin-users"] });
-      toast.success("User unbanned");
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-}
 
 // ── Delete user ───────────────────────────────────────────────────────────────
 
@@ -109,12 +66,14 @@ export function useDeleteUser() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (userId: string) => {
+      console.log("🧨 DELETE MUTATION START");
+      console.log("👉 userId:", userId);
       const res = await fetch(`/api/admin/users/${userId}/delete`, {
         method: "DELETE",
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? "Failed to delete user");
+        toast.error(err.message ?? "Failed to delete user");
       }
       return res.json();
     },
@@ -136,7 +95,7 @@ export function useResetPassword() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? "Failed to send reset email");
+        toast.error(err.message ?? "Failed to send reset email");
       }
       return res.json() as Promise<{ email: string }>;
     },

@@ -77,9 +77,11 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div>
             <h1 className="text-3xl font-bold">{pageTitle}</h1>
+            {!showSearch && (
             <p className="text-sm text-muted-foreground">
               Welcome back{userName ? `, ${userName}` : ""}
             </p>
+            )}
           </div>
 
           <div className="flex items-center gap-3">

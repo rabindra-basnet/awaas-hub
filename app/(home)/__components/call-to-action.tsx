@@ -62,9 +62,7 @@ export default function CallToAction() {
             variant="outline"
             className="
               rounded-full px-6 py-6 font-medium
-              border-white/40 text-white
-              hover:bg-white hover:text-primary
-              hover:border-white
+              border-white/40
               hover:scale-105
               shadow-lg hover:shadow-xl
               transition-all duration-300

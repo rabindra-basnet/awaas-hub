@@ -228,7 +228,9 @@ export default function PropertiesContent() {
     if (filters.verified)
       list = list.filter((p) => p.verificationStatus === "verified");
     if (filters.pendingVerification)
-      list = list.filter((p) => p.verificationStatus === "pending" || !p.verificationStatus);
+      list = list.filter(
+        (p) => p.verificationStatus === "pending" || !p.verificationStatus,
+      );
     const ts = (p: any) => (p.createdAt ? new Date(p.createdAt).getTime() : 0);
     list.sort((a, b) => {
       if (sort === "oldest") return ts(a) - ts(b);
@@ -609,49 +611,51 @@ function PropertyCard({
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onFavorite();
-              }}
-              className={cn(
-                "h-8 w-8 rounded-full flex items-center justify-center backdrop-blur-sm transition-all",
-                isFavorite
-                  ? "bg-white text-red-500"
-                  : "bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:bg-white hover:text-red-500",
-              )}
-            >
-              <Heart size={14} className={cn(isFavorite && "fill-current")} />
-            </button>
+          {!isSold && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFavorite();
+                }}
+                className={cn(
+                  "h-8 w-8 rounded-full flex items-center justify-center backdrop-blur-sm transition-all",
+                  isFavorite
+                    ? "bg-white text-red-500"
+                    : "bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:bg-white hover:text-red-500",
+                )}
+              >
+                <Heart size={14} className={cn(isFavorite && "fill-current")} />
+              </button>
 
-            {canManage && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="h-8 w-8 rounded-full bg-black/40 text-white flex items-center justify-center backdrop-blur-sm opacity-0 group-hover:opacity-100 hover:bg-black/70 transition-all"
-                  >
-                    <MoreHorizontal size={14} />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                  <DropdownMenuItem asChild className="gap-2 cursor-pointer">
-                    <Link href={`/properties/${p._id}/edit`}>
-                      <Pencil size={13} /> Edit
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <div className="p-1">
-                    <DeletePropertyDialog
-                      propertyId={p._id}
-                      onDelete={onDelete}
-                    />
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
+              {canManage && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-8 w-8 rounded-full bg-black/40 text-white flex items-center justify-center backdrop-blur-sm opacity-0 group-hover:opacity-100 hover:bg-black/70 transition-all"
+                    >
+                      <MoreHorizontal size={14} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                    <DropdownMenuItem asChild className="gap-2 cursor-pointer">
+                      <Link href={`/properties/${p._id}/edit`}>
+                        <Pencil size={13} /> Edit
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <div className="p-1">
+                      <DeletePropertyDialog
+                        propertyId={p._id}
+                        onDelete={onDelete}
+                      />
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
@@ -880,10 +884,15 @@ function FilterPanel({
       </Accordion>
 
       {isAdmin && (
-        <Accordion label="Verification Status" open={filters.pendingVerification}>
+        <Accordion
+          label="Verification Status"
+          open={filters.pendingVerification}
+        >
           <CheckItem
             checked={filters.pendingVerification}
-            onChange={() => patch("pendingVerification", !filters.pendingVerification)}
+            onChange={() =>
+              patch("pendingVerification", !filters.pendingVerification)
+            }
           >
             <span className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
             Pending review
