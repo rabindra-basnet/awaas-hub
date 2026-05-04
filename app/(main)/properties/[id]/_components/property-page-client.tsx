@@ -231,6 +231,7 @@ export function PropertyPageInner({
           propertyId={id}
           propertyTitle={title ?? "Property"}
           currentStatus={property.verificationStatus ?? "pending"}
+          propertyStatus={property.status ?? "available"}
           open={verifyOpen}
           onOpenChange={setVerifyOpen}
         />

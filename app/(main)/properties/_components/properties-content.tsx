@@ -43,6 +43,7 @@ import {
 } from "@/lib/client/queries/properties.queries";
 import PropertiesSkeleton from "./properties-skeleton";
 import DeletePropertyDialog from "./delete-property";
+import { SoldPropertiesShowcase } from "./sold-showcase";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const LOCATIONS = [
@@ -121,6 +122,22 @@ export default function PropertiesContent() {
       return true;
     });
   }, [data]);
+
+  const soldProperties = useMemo(
+    () =>
+      allProperties
+        .filter((p) => p.status?.toLowerCase() === "sold")
+        .sort((a, b) => {
+          const ta = a.soldAt ? new Date(a.soldAt).getTime() : 0;
+          const tb = b.soldAt ? new Date(b.soldAt).getTime() : 0;
+          return tb - ta;
+        }),
+    [allProperties],
+  );
+
+  // Show showcase only when user hasn't already filtered to sold
+  const showSoldShowcase =
+    soldProperties.length > 0 && !filters.statuses.includes("sold");
 
   const patch = useCallback(<K extends keyof Filters>(k: K, v: Filters[K]) => {
     setFilters((f) => ({ ...f, [k]: v }));
@@ -382,6 +399,12 @@ export default function PropertiesContent() {
 
         {/* Scrollable grid — only this region scrolls */}
         <div className="flex-1 overflow-y-auto min-h-0 px-4 lg:px-6 pb-4 [scrollbar-width:thin]">
+          {/* {showSoldShowcase && (
+            <SoldPropertiesShowcase
+              properties={soldProperties}
+              className="pt-3 pb-1"
+            />
+          )} */}
           {filtered.length === 0 && !isFetchingNextPage ? (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
               <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
@@ -484,7 +507,7 @@ function PropertyCard({
   const isBooked = p.status?.toLowerCase() === "booked";
 
   const statusStyle = isSold
-    ? "bg-red-500 text-white"
+    ? "bg-rose-600 text-white ring-1 ring-white/20"
     : isBooked
       ? "bg-amber-500 text-white"
       : "bg-emerald-500 text-white";
@@ -507,8 +530,10 @@ function PropertyCard({
   return (
     <div
       className={cn(
-        "group flex flex-col rounded-2xl overflow-hidden bg-card border border-border/50 hover:border-border hover:shadow-xl transition-all duration-300 cursor-pointer",
-        isSold && "opacity-85",
+        "group flex flex-col rounded-2xl overflow-hidden bg-card border transition-all duration-300 cursor-pointer",
+        isSold
+          ? "border-rose-200/60 dark:border-rose-900/40 hover:border-rose-300 dark:hover:border-rose-800 hover:shadow-md opacity-90"
+          : "border-border/50 hover:border-border hover:shadow-xl",
       )}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest("button,a,[role='menuitem']"))
@@ -538,7 +563,7 @@ function PropertyCard({
                 sizes="(max-width:640px)100vw,(max-width:1024px)50vw,33vw"
                 className={cn(
                   "object-cover transition-transform duration-700 group-hover:scale-[1.04]",
-                  isSold && "grayscale-[25%]",
+                  isSold && "grayscale-[50%] brightness-90",
                 )}
               />
             </div>
@@ -546,6 +571,15 @@ function PropertyCard({
         </div>
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
+
+        {/* Sold ribbon corner */}
+        {isSold && (
+          <div className="absolute top-0 right-0 overflow-hidden w-20 h-20 pointer-events-none z-10">
+            <div className="absolute top-4 right-[-20px] bg-rose-600 text-white text-[9px] font-black tracking-[0.15em] uppercase py-1 px-8 rotate-[45deg] shadow-md">
+              Sold
+            </div>
+          </div>
+        )}
 
         <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
           <div className="flex flex-col gap-1.5">
