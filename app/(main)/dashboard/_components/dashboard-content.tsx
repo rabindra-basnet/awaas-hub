@@ -1,6 +1,7 @@
 "use client";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { useSession } from "@/lib/client/auth-client";
 import { dashboardQuery } from "@/lib/client/queries/dashboard.queries";
 import Image from "next/image";
@@ -83,11 +84,13 @@ const STAT_BORDER: Record<string, string> = {
 };
 
 // ── Greeting ─────────────────────────────────────────────────────────────────
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
+function useGreeting() {
+  const [greeting, setGreeting] = useState<string>("");
+  useEffect(() => {
+    const h = new Date().getHours();
+    setGreeting(h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening");
+  }, []);
+  return greeting;
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -99,6 +102,7 @@ export default function DashboardContent() {
   const isAdmin = role === "admin";
   const isSeller = role === "seller";
   const firstName = session?.user?.name?.split(" ")[0] ?? "there";
+  const greeting = useGreeting();
 
   const stats = dashboard.stats.map((s) => ({
     ...s,
@@ -120,7 +124,7 @@ export default function DashboardContent() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
-              {getGreeting()},{" "}
+              {greeting && <>{greeting}, </>}
               <span className="text-primary">{firstName}</span>
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">{today}</p>
