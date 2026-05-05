@@ -765,6 +765,20 @@ export default function PropertyPage({
               ) : (
                 /* ── Authenticated: owner / admin / buyer with credits ── */
                 <>
+                  {/* Hide "Book a Visit" for the owner or unverified properties */}
+                  {!isOwner && property.verificationStatus === "verified" && (
+                    <Button
+                      size="lg"
+                      disabled={sessionPending}
+                      className="w-full h-12 rounded-xl font-bold text-sm tracking-wide shadow-md"
+                      onClick={() =>
+                        router.push(`/appointments/new?propertyId=${id}`)
+                      }
+                    >
+                      {sessionPending ? "Loading..." : "Book a Visit"}
+                    </Button>
+                  )}
+
                   {hasFullAccess || hasContactAccess || totalCredits > 0 ? (
                     <Button
                       variant="outline"

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/server/getSession";
 import { Role } from "@/lib/rbac";
 import { Property } from "@/lib/models/Property";
+import { Appointment } from "@/lib/models/Appointment";
 import { Favorite } from "@/lib/models/Favorite";
 import { unauthorized, forbidden, internalServerError } from "@/lib/error";
 import { getDb } from "@/lib/server/db";
@@ -18,11 +19,12 @@ export async function GET() {
     const db = await getDb();
 
     // 3️⃣ Fetch stats in parallel
-    const [totalUsers, totalProperties, availableProperties, totalFavorites] =
+    const [totalUsers, totalProperties, availableProperties, totalAppointments, totalFavorites] =
       await Promise.all([
         db.collection("users").countDocuments(),
         Property.countDocuments(),
         Property.countDocuments({ status: "available" }),
+        Appointment.countDocuments(),
         Favorite.countDocuments(),
       ]);
 
@@ -30,9 +32,13 @@ export async function GET() {
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
 
+    const appointmentsByStatus = await Appointment.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]);
+
     return NextResponse.json({
-      stats: { totalUsers, totalProperties, availableProperties, totalFavorites },
-      charts: { propertiesByStatus },
+      stats: { totalUsers, totalProperties, availableProperties, totalAppointments, totalFavorites },
+      charts: { appointmentsByStatus, propertiesByStatus },
     });
   } catch (error) {
     console.error("Error fetching analytics:", error);

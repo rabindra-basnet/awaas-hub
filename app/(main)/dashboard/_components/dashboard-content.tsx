@@ -4,6 +4,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useSession } from "@/lib/client/auth-client";
 import { dashboardQuery } from "@/lib/client/queries/dashboard.queries";
+import TodayScheduleCard from "./today-schedule-card";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -57,30 +58,45 @@ const STATUS_COLORS: Record<string, string> = {
   sold: "#ef4444",
 };
 
-const STATUS_CARD_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
-  available: { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500" },
-  booked:    { bg: "bg-amber-50 dark:bg-amber-950/30",   text: "text-amber-700 dark:text-amber-400",   dot: "bg-amber-500" },
-  sold:      { bg: "bg-rose-50 dark:bg-rose-950/30",     text: "text-rose-700 dark:text-rose-400",     dot: "bg-rose-500" },
+const STATUS_CARD_STYLES: Record<
+  string,
+  { bg: string; text: string; dot: string }
+> = {
+  available: {
+    bg: "bg-emerald-50 dark:bg-emerald-950/30",
+    text: "text-emerald-700 dark:text-emerald-400",
+    dot: "bg-emerald-500",
+  },
+  booked: {
+    bg: "bg-amber-50 dark:bg-amber-950/30",
+    text: "text-amber-700 dark:text-amber-400",
+    dot: "bg-amber-500",
+  },
+  sold: {
+    bg: "bg-rose-50 dark:bg-rose-950/30",
+    text: "text-rose-700 dark:text-rose-400",
+    dot: "bg-rose-500",
+  },
 };
 
 const STAT_ACCENT: Record<string, string> = {
-  Building2:  "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  Home:       "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  Users:      "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  Building2: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  Home: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  Users: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
   DollarSign: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   TrendingUp: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-  Heart:      "bg-pink-500/10 text-pink-600 dark:text-pink-400",
-  Clock:      "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  Heart: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+  Clock: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
 };
 
 const STAT_BORDER: Record<string, string> = {
-  Building2:  "border-l-blue-500",
-  Home:       "border-l-emerald-500",
-  Users:      "border-l-violet-500",
+  Building2: "border-l-blue-500",
+  Home: "border-l-emerald-500",
+  Users: "border-l-violet-500",
   DollarSign: "border-l-amber-500",
   TrendingUp: "border-l-rose-500",
-  Heart:      "border-l-pink-500",
-  Clock:      "border-l-orange-500",
+  Heart: "border-l-pink-500",
+  Clock: "border-l-orange-500",
 };
 
 // ── Greeting ─────────────────────────────────────────────────────────────────
@@ -88,7 +104,9 @@ function useGreeting() {
   const [greeting, setGreeting] = useState<string>("");
   useEffect(() => {
     const h = new Date().getHours();
-    setGreeting(h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening");
+    setGreeting(
+      h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening",
+    );
   }, []);
   return greeting;
 }
@@ -108,7 +126,7 @@ export default function DashboardContent() {
     ...s,
     IconComp: ICONMAP[s.icon] ?? Building2,
   }));
-
+  console.log(dashboard.todaysSchedule)
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -119,7 +137,6 @@ export default function DashboardContent() {
   return (
     <div className="flex-1 overflow-y-auto [scrollbar-width:thin]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-
         {/* ── Greeting banner ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -133,14 +150,13 @@ export default function DashboardContent() {
             <span className="text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-primary/10 text-primary capitalize">
               {role}
             </span>
-            {(isAdmin || isSeller) && (
-              <Link
-                href="/properties/new"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 px-3.5 py-2 rounded-lg transition-colors"
-              >
-                <Plus size={13} /> Add Property
-              </Link>
-            )}
+
+            <Link
+              href="/properties/new"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 px-3.5 py-2 rounded-lg transition-colors"
+            >
+              <Plus size={13} /> Add Property
+            </Link>
             {isAdmin && (
               <Link
                 href="/users"
@@ -170,7 +186,12 @@ export default function DashboardContent() {
                 )}
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", accentCls)}>
+                  <div
+                    className={cn(
+                      "w-9 h-9 rounded-xl flex items-center justify-center",
+                      accentCls,
+                    )}
+                  >
                     <stat.IconComp size={16} />
                   </div>
                   <span
@@ -181,7 +202,11 @@ export default function DashboardContent() {
                         : "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400",
                     )}
                   >
-                    {isUp ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+                    {isUp ? (
+                      <ArrowUpRight size={10} />
+                    ) : (
+                      <ArrowDownRight size={10} />
+                    )}
                     {Math.abs(changeVal)}%
                   </span>
                 </div>
@@ -190,7 +215,9 @@ export default function DashboardContent() {
                     ? stat.value.toLocaleString()
                     : stat.value}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {stat.label}
+                </p>
               </div>
             );
           })}
@@ -230,19 +257,31 @@ export default function DashboardContent() {
                       borderRadius: 8,
                       fontSize: 12,
                     }}
-                    formatter={(value, name) => [value, String(name).charAt(0).toUpperCase() + String(name).slice(1)]}
+                    formatter={(value, name) => [
+                      value,
+                      String(name).charAt(0).toUpperCase() +
+                        String(name).slice(1),
+                    ]}
                   />
                 </PieChart>
               </ResponsiveContainer>
               {/* Legend */}
               <div className="flex items-center justify-center gap-4 mt-1">
                 {dashboard.propertiesByStatus.map((entry) => (
-                  <span key={entry._id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground capitalize">
+                  <span
+                    key={entry._id}
+                    className="flex items-center gap-1.5 text-[11px] text-muted-foreground capitalize"
+                  >
                     <span
                       className="w-2 h-2 rounded-full shrink-0"
-                      style={{ background: STATUS_COLORS[entry._id] ?? "#6366f1" }}
+                      style={{
+                        background: STATUS_COLORS[entry._id] ?? "#6366f1",
+                      }}
                     />
-                    {entry._id} <span className="font-semibold text-foreground">{entry.count}</span>
+                    {entry._id}{" "}
+                    <span className="font-semibold text-foreground">
+                      {entry.count}
+                    </span>
                   </span>
                 ))}
               </div>
@@ -257,10 +296,16 @@ export default function DashboardContent() {
                 <BarChart data={dashboard.propertiesByStatus} barSize={40}>
                   <XAxis
                     dataKey="_id"
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)", textTransform: "capitalize" }}
+                    tick={{
+                      fontSize: 11,
+                      fill: "var(--muted-foreground)",
+                      textTransform: "capitalize",
+                    }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v) => v.charAt(0).toUpperCase() + v.slice(1)}
+                    tickFormatter={(v) =>
+                      v.charAt(0).toUpperCase() + v.slice(1)
+                    }
                   />
                   <YAxis
                     allowDecimals={false}
@@ -294,22 +339,27 @@ export default function DashboardContent() {
 
         {/* ── Seller: Property status breakdown ── */}
         {isSeller && dashboard.propertiesByStatus?.length > 0 && (
-          <PropertyStatusBar propertiesByStatus={dashboard.propertiesByStatus} />
+          <PropertyStatusBar
+            propertiesByStatus={dashboard.propertiesByStatus}
+          />
         )}
 
         {/* ── Bottom: Recent properties + Quick actions ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="lg:col-span-1">
             <RecentProperties
               properties={dashboard.recentProperties}
               role={role}
             />
           </div>
+          <TodayScheduleCard schedule={dashboard.todaysSchedule ?? []} />
           <div>
-            <QuickActions role={role} pendingCount={dashboard.pendingVerificationCount} />
+            <QuickActions
+              role={role}
+              pendingCount={dashboard.pendingVerificationCount}
+            />
           </div>
         </div>
-
       </div>
     </div>
   );
@@ -326,7 +376,10 @@ function PropertyStatusBar({
 
   const order = ["available", "booked", "sold"];
   const sorted = order
-    .map((id) => propertiesByStatus.find((e) => e._id === id) ?? { _id: id, count: 0 })
+    .map(
+      (id) =>
+        propertiesByStatus.find((e) => e._id === id) ?? { _id: id, count: 0 },
+    )
     .filter((e) => e.count > 0);
 
   return (
@@ -334,7 +387,9 @@ function PropertyStatusBar({
       <div className="flex items-center gap-2 mb-4">
         <ShieldCheck size={14} className="text-muted-foreground" />
         <h3 className="text-sm font-semibold">Your Portfolio Breakdown</h3>
-        <span className="ml-auto text-xs text-muted-foreground">{total} total</span>
+        <span className="ml-auto text-xs text-muted-foreground">
+          {total} total
+        </span>
       </div>
 
       {/* Progress bar */}
@@ -358,13 +413,28 @@ function PropertyStatusBar({
       {/* Labels */}
       <div className="grid grid-cols-3 gap-3">
         {order.map((id) => {
-          const entry = propertiesByStatus.find((e) => e._id === id) ?? { _id: id, count: 0 };
+          const entry = propertiesByStatus.find((e) => e._id === id) ?? {
+            _id: id,
+            count: 0,
+          };
           const style = STATUS_CARD_STYLES[id] ?? STATUS_CARD_STYLES.available;
           const pct = total > 0 ? Math.round((entry.count / total) * 100) : 0;
           return (
-            <div key={id} className={cn("rounded-xl px-3.5 py-3 text-center", style.bg)}>
-              <p className={cn("text-xl font-bold tabular-nums", style.text)}>{entry.count}</p>
-              <p className={cn("text-[10px] font-semibold capitalize mt-0.5", style.text)}>{id}</p>
+            <div
+              key={id}
+              className={cn("rounded-xl px-3.5 py-3 text-center", style.bg)}
+            >
+              <p className={cn("text-xl font-bold tabular-nums", style.text)}>
+                {entry.count}
+              </p>
+              <p
+                className={cn(
+                  "text-[10px] font-semibold capitalize mt-0.5",
+                  style.text,
+                )}
+              >
+                {id}
+              </p>
               <p className="text-[10px] text-muted-foreground mt-0.5">{pct}%</p>
             </div>
           );
@@ -380,8 +450,8 @@ const FALLBACK_IMG =
 
 const STATUS_BADGE: Record<string, string> = {
   available: "bg-emerald-500 text-white",
-  booked:    "bg-amber-500 text-white",
-  sold:      "bg-rose-600 text-white",
+  booked: "bg-amber-500 text-white",
+  sold: "bg-rose-600 text-white",
 };
 
 function RecentProperties({
@@ -411,7 +481,10 @@ function RecentProperties({
           <div>
             <p className="text-sm font-medium">No properties yet</p>
             {role !== "buyer" && (
-              <Link href="/properties/new" className="text-xs text-primary hover:underline mt-1 block">
+              <Link
+                href="/properties/new"
+                className="text-xs text-primary hover:underline mt-1 block"
+              >
                 Add your first property →
               </Link>
             )}
@@ -443,7 +516,8 @@ function RecentProperties({
                     <span
                       className={cn(
                         "absolute bottom-0.5 left-0.5 text-[8px] font-bold px-1.5 py-0.5 rounded capitalize leading-none",
-                        STATUS_BADGE[p.status] ?? "bg-muted text-muted-foreground",
+                        STATUS_BADGE[p.status] ??
+                          "bg-muted text-muted-foreground",
                       )}
                     >
                       {p.status}
@@ -511,25 +585,110 @@ function QuickActions({
 
   const actions: Action[] = isAdmin
     ? [
-        { label: "All Properties",  desc: "Browse & manage listings",      href: "/properties",     icon: Building2,        accent: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-        { label: "Manage Users",    desc: "Roles, access & accounts",      href: "/users",           icon: Users,            accent: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
-        { label: "Pending Review",  desc: "Properties awaiting approval",  href: "/properties?verification=pending", icon: Clock, accent: "bg-orange-500/10 text-orange-600 dark:text-orange-400", badge: pendingCount },
-        { label: "Add Property",    desc: "List a new property",           href: "/properties/new", icon: Plus,             accent: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-        { label: "Settings",        desc: "Platform configuration",        href: "/settings",        icon: Settings,         accent: "bg-muted text-muted-foreground" },
+        {
+          label: "All Properties",
+          desc: "Browse & manage listings",
+          href: "/properties",
+          icon: Building2,
+          accent: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+        },
+        {
+          label: "Manage Users",
+          desc: "Roles, access & accounts",
+          href: "/users",
+          icon: Users,
+          accent: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+        },
+        {
+          label: "Pending Review",
+          desc: "Properties awaiting approval",
+          href: "/properties?verification=pending",
+          icon: Clock,
+          accent: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+          badge: pendingCount,
+        },
+        {
+          label: "Add Property",
+          desc: "List a new property",
+          href: "/properties/new",
+          icon: Plus,
+          accent: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+        },
+        {
+          label: "Settings",
+          desc: "Platform configuration",
+          href: "/settings",
+          icon: Settings,
+          accent: "bg-muted text-muted-foreground",
+        },
       ]
     : isSeller
       ? [
-          { label: "Add Property",    desc: "List a new property",     href: "/properties/new", icon: Plus,      accent: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-          { label: "My Listings",     desc: "View your properties",    href: "/properties",     icon: Building2, accent: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-          { label: "Favorites",       desc: "Your saved properties",   href: "/favorites",       icon: Heart,     accent: "bg-pink-500/10 text-pink-600 dark:text-pink-400" },
-          { label: "Files",           desc: "Manage uploaded files",   href: "/files",           icon: BadgeDollarSign, accent: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-          { label: "Settings",        desc: "Account preferences",     href: "/settings",        icon: Settings,  accent: "bg-muted text-muted-foreground" },
+          {
+            label: "Add Property",
+            desc: "List a new property",
+            href: "/properties/new",
+            icon: Plus,
+            accent: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+          },
+          {
+            label: "My Listings",
+            desc: "View your properties",
+            href: "/properties",
+            icon: Building2,
+            accent: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+          },
+          {
+            label: "Favorites",
+            desc: "Your saved properties",
+            href: "/favorites",
+            icon: Heart,
+            accent: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+          },
+          {
+            label: "Files",
+            desc: "Manage uploaded files",
+            href: "/files",
+            icon: BadgeDollarSign,
+            accent: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+          },
+          {
+            label: "Settings",
+            desc: "Account preferences",
+            href: "/settings",
+            icon: Settings,
+            accent: "bg-muted text-muted-foreground",
+          },
         ]
       : [
-          { label: "Browse Properties", desc: "Explore all listings",   href: "/properties",  icon: Building2, accent: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-          { label: "Favorites",         desc: "Your saved properties",  href: "/favorites",    icon: Heart,     accent: "bg-pink-500/10 text-pink-600 dark:text-pink-400" },
-          { label: "Files",             desc: "Your documents",         href: "/files",        icon: BadgeDollarSign, accent: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-          { label: "Settings",          desc: "Account preferences",    href: "/settings",     icon: Settings,  accent: "bg-muted text-muted-foreground" },
+          {
+            label: "Browse Properties",
+            desc: "Explore all listings",
+            href: "/properties",
+            icon: Building2,
+            accent: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+          },
+          {
+            label: "Favorites",
+            desc: "Your saved properties",
+            href: "/favorites",
+            icon: Heart,
+            accent: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+          },
+          {
+            label: "Files",
+            desc: "Your documents",
+            href: "/files",
+            icon: BadgeDollarSign,
+            accent: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+          },
+          {
+            label: "Settings",
+            desc: "Account preferences",
+            href: "/settings",
+            icon: Settings,
+            accent: "bg-muted text-muted-foreground",
+          },
         ];
 
   return (
@@ -545,19 +704,31 @@ function QuickActions({
             href={a.href}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/60 transition-colors group"
           >
-            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", a.accent)}>
+            <div
+              className={cn(
+                "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                a.accent,
+              )}
+            >
               <a.icon size={14} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-semibold group-hover:text-primary transition-colors">{a.label}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{a.desc}</p>
+              <p className="text-[12px] font-semibold group-hover:text-primary transition-colors">
+                {a.label}
+              </p>
+              <p className="text-[10px] text-muted-foreground truncate">
+                {a.desc}
+              </p>
             </div>
             {a.badge != null && a.badge > 0 && (
               <span className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-400 text-[10px] font-bold">
                 {a.badge > 9 ? "9+" : a.badge}
               </span>
             )}
-            <ArrowRight size={12} className="text-muted-foreground/40 shrink-0 group-hover:text-muted-foreground transition-colors" />
+            <ArrowRight
+              size={12}
+              className="text-muted-foreground/40 shrink-0 group-hover:text-muted-foreground transition-colors"
+            />
           </Link>
         ))}
       </div>
