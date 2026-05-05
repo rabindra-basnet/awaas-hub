@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { Property } from "@/lib/models/Property";
+import { Appointment } from "@/lib/models/Appointment";
 import { Favorite } from "@/lib/models/Favorite";
 import Files from "@/lib/models/Files";
 import { getSignedUrlForDownload } from "@/lib/server/r2-client";
@@ -42,8 +43,13 @@ export async function fetchDashboardData(
   const propertyQuery = isSeller ? { sellerId: new mongoose.Types.ObjectId(userId) } : {};
   const propertyQueryPlain = isSeller ? { sellerId: userId } : {};
 
+  const verifiedPropertyIds = await Property.find({ verificationStatus: "verified" })
+    .select("_id")
+    .lean()
+    .then((props) => props.map((p) => p._id));
+
   // Recent properties with signed image URLs
-  const recentPropertiesRaw = await Property.find(propertyQueryPlain)
+  const recentPropertiesRaw = await Property.find({ ...propertyQueryPlain, verificationStatus: "verified" })
     .sort({ createdAt: -1 })
     .limit(5)
     .select("title location price views messagesCount status verificationStatus")
@@ -82,6 +88,7 @@ export async function fetchDashboardData(
     pendingVerificationCount,
     favoritesCount,
     propertiesByStatus,
+    todaysAppointments,
   ] = await Promise.all([
     Promise.all([
       Property.countDocuments(propertyQueryPlain),
@@ -111,6 +118,11 @@ export async function fetchDashboardData(
       ...(isSeller ? [{ $match: { sellerId: new mongoose.Types.ObjectId(userId) } }] : []),
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]),
+    isAdmin
+      ? Appointment.find({ propertyId: { $in: verifiedPropertyIds } }).sort({ createdAt: -1 }).limit(4).lean()
+      : (isSeller || isBuyer)
+        ? Appointment.find({ participants: userId, propertyId: { $in: verifiedPropertyIds } }).sort({ createdAt: -1 }).limit(4).lean()
+        : Promise.resolve([]),
   ]);
 
   // Build role-specific stat cards
@@ -167,6 +179,7 @@ export async function fetchDashboardData(
     JSON.stringify({
       stats,
       recentProperties,
+      todaysSchedule: todaysAppointments,
       propertiesByStatus,
       soldCount,
       bookedCount: await Property.countDocuments({ ...propertyQueryPlain, status: "booked" }),

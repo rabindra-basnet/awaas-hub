@@ -19,7 +19,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onSearch }) => {
 
   const isAnonymous = session?.user?.isAnonymous === true;
 
-  const skipHeaderPaths = ["/properties/", "/files", "/payment"];
+  const skipHeaderPaths = ["/properties/", "/files", "/payment", "/appointments"];
   if (skipHeaderPaths.some((p) => pathname?.startsWith(p))) return null;
 
   const pageTitle =
