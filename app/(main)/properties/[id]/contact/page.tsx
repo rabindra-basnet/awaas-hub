@@ -38,16 +38,18 @@ import SellerChatInbox from "../../_components/SellerChatInbox";
 
 function ContactPageSkeleton() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="contact-page-root">
       <div className="sticky top-0 z-20 h-14 border-b border-border/40 bg-background/95 backdrop-blur-xl" />
-      <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className="w-full lg:w-[300px] shrink-0 space-y-4">
+      <div className="contact-body">
+        <div className="contact-inner">
+          <div className="contact-sidebar">
             <div className="rounded-3xl h-64 bg-muted/30 animate-pulse" />
             <div className="rounded-3xl h-44 bg-muted/30 animate-pulse" />
             <div className="rounded-3xl h-36 bg-muted/30 animate-pulse" />
           </div>
-          <div className="flex-1 rounded-3xl h-[520px] bg-muted/30 animate-pulse" />
+          <div className="contact-chat-panel">
+            <div className="flex-1 rounded-3xl bg-muted/30 animate-pulse" />
+          </div>
         </div>
       </div>
     </div>
@@ -56,7 +58,13 @@ function ContactPageSkeleton() {
 
 // ── Premium Lock Overlay ──────────────────────────────────────────────────────
 
-function PremiumBlur({ children, locked }: { children: React.ReactNode; locked: boolean }) {
+function PremiumBlur({
+  children,
+  locked,
+}: {
+  children: React.ReactNode;
+  locked: boolean;
+}) {
   if (!locked) return <>{children}</>;
   return (
     <div className="relative select-none">
@@ -73,27 +81,17 @@ function PremiumBlur({ children, locked }: { children: React.ReactNode; locked: 
 
 // ── Seller Hero Card ──────────────────────────────────────────────────────────
 
-function SellerHeroCard({ seller, hasAccess }: { seller: SellerProfile; hasAccess: boolean }) {
+function SellerHeroCard({
+  seller,
+  hasAccess,
+}: {
+  seller: SellerProfile;
+  hasAccess: boolean;
+}) {
   return (
     <div className="rounded-3xl overflow-hidden border border-border/50 shadow-sm">
-      {/* Banner */}
-      <div className="relative h-20 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent">
-        <div
-          className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 20% 50%, hsl(var(--primary)/0.4) 0%, transparent 60%), radial-gradient(circle at 80% 20%, hsl(var(--primary)/0.2) 0%, transparent 50%)",
-          }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(135deg, currentColor 0, currentColor 1px, transparent 0, transparent 8px)",
-            backgroundSize: "12px 12px",
-          }}
-        />
-      </div>
+      {/* Banner — gradients and grid pattern live in .seller-hero-banner CSS */}
+      <div className="seller-hero-banner" />
 
       <div className="bg-card px-5 pb-5 -mt-7">
         {/* Avatar + badge */}
@@ -126,7 +124,9 @@ function SellerHeroCard({ seller, hasAccess }: { seller: SellerProfile; hasAcces
         </div>
 
         {/* Name + meta */}
-        <h2 className="text-[15px] font-black text-foreground leading-tight">{seller.name}</h2>
+        <h2 className="text-[15px] font-black text-foreground leading-tight">
+          {seller.name}
+        </h2>
         <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
           <MapPin size={9} className="text-primary/60" />
           AawasHub · Since {seller.memberSince}
@@ -207,7 +207,9 @@ function ContactDetailsCard({
         {/* Email row */}
         <PremiumBlur locked={!hasAccess}>
           <a
-            href={hasAccess && seller.email ? `mailto:${seller.email}` : undefined}
+            href={
+              hasAccess && seller.email ? `mailto:${seller.email}` : undefined
+            }
             className={cn(
               "flex items-center gap-3 rounded-2xl px-3 py-3 border transition-all group",
               hasAccess
@@ -227,7 +229,10 @@ function ContactDetailsCard({
               </p>
             </span>
             {hasAccess && (
-              <ExternalLink size={12} className="text-muted-foreground/50 group-hover:text-primary transition-colors" />
+              <ExternalLink
+                size={12}
+                className="text-muted-foreground/50 group-hover:text-primary transition-colors"
+              />
             )}
           </a>
         </PremiumBlur>
@@ -251,26 +256,37 @@ function ContactDetailsCard({
                 Phone
               </p>
               <p className="text-[12px] font-semibold text-foreground mt-0.5">
-                {hasAccess && showPhone ? "Send a message below" : "+977 98•-•••-••••"}
+                {hasAccess && showPhone
+                  ? "Send a message below"
+                  : "+977 98•-•••-••••"}
               </p>
             </span>
-            {hasAccess && (
-              showPhone ? <EyeOff size={12} className="text-muted-foreground/50" /> : <Eye size={12} className="text-muted-foreground/50" />
-            )}
+            {hasAccess &&
+              (showPhone ? (
+                <EyeOff size={12} className="text-muted-foreground/50" />
+              ) : (
+                <Eye size={12} className="text-muted-foreground/50" />
+              ))}
           </button>
         </PremiumBlur>
 
         {/* Book visit */}
         <button
-          onClick={() => (window.location.href = `/appointments/new?propertyId=${id}`)}
+          onClick={() =>
+            (window.location.href = `/appointments/new?propertyId=${id}`)
+          }
           className="w-full flex items-center gap-3 rounded-2xl px-3 py-3 border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all text-left group"
         >
           <span className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
             <CalendarCheck size={14} className="text-primary" />
           </span>
           <span className="flex-1">
-            <p className="text-[11px] font-bold text-foreground">Schedule a Visit</p>
-            <p className="text-[9px] text-muted-foreground mt-0.5">Book in-person appointment</p>
+            <p className="text-[11px] font-bold text-foreground">
+              Schedule a Visit
+            </p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">
+              Book in-person appointment
+            </p>
           </span>
           <span className="text-[10px] font-bold text-primary bg-primary/10 group-hover:bg-primary/20 px-2.5 py-1 rounded-full transition-all">
             Book
@@ -292,12 +308,14 @@ function SellerStatsCard({
   hasAccess: boolean;
   onUpgrade: () => void;
 }) {
-  const soldPct = seller.totalListings > 0
-    ? Math.round((seller.soldCount / seller.totalListings) * 100)
-    : 0;
-  const activePct = seller.totalListings > 0
-    ? Math.round((seller.activeListings / seller.totalListings) * 100)
-    : 0;
+  const soldPct =
+    seller.totalListings > 0
+      ? Math.round((seller.soldCount / seller.totalListings) * 100)
+      : 0;
+  const activePct =
+    seller.totalListings > 0
+      ? Math.round((seller.activeListings / seller.totalListings) * 100)
+      : 0;
 
   return (
     <div className="rounded-3xl border border-border/50 bg-card shadow-sm overflow-hidden">
@@ -311,17 +329,34 @@ function SellerStatsCard({
       <div className="px-5 pb-4 space-y-3">
         {/* Bar rows */}
         {[
-          { label: "Sold Rate", pct: soldPct, color: "bg-rose-500", track: "bg-rose-100 dark:bg-rose-950/40" },
-          { label: "Active Rate", pct: activePct, color: "bg-emerald-500", track: "bg-emerald-100 dark:bg-emerald-950/40" },
+          {
+            label: "Sold Rate",
+            pct: soldPct,
+            color: "bg-rose-500",
+            track: "bg-rose-100 dark:bg-rose-950/40",
+          },
+          {
+            label: "Active Rate",
+            pct: activePct,
+            color: "bg-emerald-500",
+            track: "bg-emerald-100 dark:bg-emerald-950/40",
+          },
         ].map(({ label, pct, color, track }) => (
           <div key={label}>
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-semibold text-muted-foreground">{label}</span>
-              <span className="text-[11px] font-black text-foreground tabular-nums">{pct}%</span>
+              <span className="text-[11px] font-semibold text-muted-foreground">
+                {label}
+              </span>
+              <span className="text-[11px] font-black text-foreground tabular-nums">
+                {pct}%
+              </span>
             </div>
             <div className={cn("h-1.5 rounded-full overflow-hidden", track)}>
               <div
-                className={cn("h-full rounded-full transition-all duration-700", color)}
+                className={cn(
+                  "h-full rounded-full transition-all duration-700",
+                  color,
+                )}
                 style={{ width: `${pct}%` }}
               />
             </div>
@@ -354,7 +389,9 @@ function SellerStatsCard({
               <Crown size={13} className="text-amber-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">Premium Access</p>
+              <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                Premium Access
+              </p>
               <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70 mt-0.5 leading-relaxed">
                 Unlock full contact details and direct email.
               </p>
@@ -401,10 +438,19 @@ export default function ContactPage({
             <Home size={20} className="text-muted-foreground" />
           </div>
           <div>
-            <p className="text-sm font-bold text-foreground">Unable to load seller details</p>
-            <p className="text-xs text-muted-foreground mt-1">Something went wrong. Please try again.</p>
+            <p className="text-sm font-bold text-foreground">
+              Unable to load seller details
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Something went wrong. Please try again.
+            </p>
           </div>
-          <Button variant="outline" size="sm" className="rounded-full gap-2" onClick={() => router.push(`/properties/${id}`)}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full gap-2"
+            onClick={() => router.push(`/properties/${id}`)}
+          >
             <ArrowLeft size={14} />
             Back to property
           </Button>
@@ -418,15 +464,9 @@ export default function ContactPage({
   const currentUserId = session?.user?.id ?? "";
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Soft ambient background */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0 opacity-30 dark:opacity-15"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 50% at 30% -10%, hsl(var(--primary)/0.12), transparent), radial-gradient(ellipse 60% 40% at 80% 90%, hsl(var(--primary)/0.06), transparent)",
-        }}
-      />
+    <div className="contact-page-root">
+      {/* Soft ambient background — gradient defined in globals.css */}
+      <div className="contact-ambient-bg" />
 
       {/* Top nav */}
       <div className="sticky top-0 z-30 border-b border-border/40 bg-background/90 backdrop-blur-xl">
@@ -446,7 +486,9 @@ export default function ContactPage({
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="text-sm font-bold leading-tight truncate">{seller.name}</p>
+              <p className="text-sm font-bold leading-tight truncate">
+                {seller.name}
+              </p>
               <p className="text-[10px] text-muted-foreground truncate">
                 #{id.slice(0, 8).toUpperCase()}
               </p>
@@ -470,11 +512,10 @@ export default function ContactPage({
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-8 py-6">
-        <div className="flex flex-col lg:flex-row gap-5 items-start">
-
-          {/* ── Left sidebar ── */}
-          <div className="w-full lg:w-[290px] shrink-0 space-y-4">
+      <div className="contact-body">
+        <div className="contact-inner">
+          {/* ── Left sidebar — fixed, no scroll on desktop ── */}
+          <aside className="contact-sidebar">
             <SellerHeroCard seller={seller} hasAccess={hasAccess} />
             <ContactDetailsCard
               seller={seller}
@@ -488,54 +529,56 @@ export default function ContactPage({
               hasAccess={hasAccess}
               onUpgrade={() => router.push(`/properties/${id}`)}
             />
-          </div>
+          </aside>
 
-          {/* ── Chat panel ── */}
-          {(data.isOwner || data.isAdmin) ? (
-            <SellerChatInbox
-              propertyId={id}
-              currentUserId={currentUserId}
-              isAdmin={data.isAdmin}
-              isOwner={data.isOwner}
-            />
-          ) : (
-            <div className="flex-1 min-w-0 w-full rounded-3xl border border-border/50 overflow-hidden bg-card shadow-sm flex flex-col lg:sticky lg:top-[72px]">
-              {/* Chat header */}
-              <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border/40 bg-muted/20 shrink-0">
-                <div className="relative">
-                  <Avatar className="w-9 h-9">
-                    <AvatarImage src={seller.image ?? undefined} />
-                    <AvatarFallback className="text-[11px] font-black bg-primary/10 text-primary">
-                      {seller.initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-card" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-bold leading-tight">
-                    {seller.name.split(" ")[0]}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <HeadphonesIcon size={9} />
-                    Direct message · replies within 24h
-                  </p>
-                </div>
-                <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Online
-                </span>
-              </div>
-
-              {/* Chat body */}
-              <PropertyDirectChat
+          {/* ── Chat panel — scrollable ── */}
+          <div className="contact-chat-panel">
+            {data.isOwner || data.isAdmin ? (
+              <SellerChatInbox
                 propertyId={id}
-                sellerId={seller.id}
-                sellerName={seller.name}
-                propertyTitle={propertyTitle}
                 currentUserId={currentUserId}
+                isAdmin={data.isAdmin}
+                isOwner={data.isOwner}
               />
-            </div>
-          )}
+            ) : (
+              <div className="flex-1 rounded-3xl border border-border/50 overflow-hidden bg-card shadow-sm flex flex-col">
+                {/* Chat header */}
+                <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border/40 bg-muted/20 shrink-0">
+                  <div className="relative">
+                    <Avatar className="w-9 h-9">
+                      <AvatarImage src={seller.image ?? undefined} />
+                      <AvatarFallback className="text-[11px] font-black bg-primary/10 text-primary">
+                        {seller.initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-card" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-bold leading-tight">
+                      {seller.name.split(" ")[0]}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <HeadphonesIcon size={9} />
+                      Direct message · replies within 24h
+                    </p>
+                  </div>
+                  <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Online
+                  </span>
+                </div>
+
+                {/* Chat body */}
+                <PropertyDirectChat
+                  propertyId={id}
+                  sellerId={seller.id}
+                  sellerName={seller.name}
+                  propertyTitle={propertyTitle}
+                  currentUserId={currentUserId}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
