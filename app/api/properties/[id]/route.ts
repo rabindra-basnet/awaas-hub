@@ -58,6 +58,64 @@ function validateBoundary(boundaryPoints: unknown): boolean {
   });
 }
 
+// export async function GET(
+//   req: Request,
+//   { params }: { params: Promise<{ id: string }> },
+// ) {
+//   try {
+//     await getDb();
+
+//     const session = await getServerSession();
+//     const role = (session?.user?.role as Role) ?? Role.GUEST;
+//     const userId = session?.user?.id;
+
+//     const { id } = await params;
+//     if (!mongoose.Types.ObjectId.isValid(id))
+//       return badRequest("Invalid property ID");
+
+//     // ── Build query based on role ────────────────────────────────────────────
+//     // Filter at DB level so unverified docs are never loaded for guests/buyers
+//     let propertyQuery: Record<string, any> = {
+//       _id: new mongoose.Types.ObjectId(id),
+//     };
+
+
+
+//     const isOwner =
+//       userId && property?.sellerId?.toString() === userId;
+
+//     if (role === Role.ADMIN) {
+//       // Admin sees everything
+//     } else if (isOwner) {
+//       // Owner sees ONLY their own property (any status)
+//       propertyQuery._id = new mongoose.Types.ObjectId(id);
+//     } else {
+//       // Everyone else sees only verified
+//       propertyQuery.verificationStatus = "verified";
+//     }
+
+//     const property = await Property.findOne(propertyQuery).lean();
+//     if (!property) return notFound("Property not found");
+
+//     // Normalize missing verificationStatus for old docs (always present in response)
+//     const verificationStatus = property.verificationStatus ?? "pending";
+
+//     // ── Favorites ────────────────────────────────────────────────────────────
+//     const isFavorite = userId
+//       ? await Favorite.exists({ userId, propertyId: id })
+//       : false;
+
+//     return NextResponse.json({
+//       ...property,
+//       verificationStatus, // always present in response
+//       isFavorite: !!isFavorite,
+//     });
+//   } catch (err: any) {
+//     console.error(err);
+//     return internalServerError(err.message);
+//   }
+// }
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -70,41 +128,40 @@ export async function GET(
     const userId = session?.user?.id;
 
     const { id } = await params;
-    if (!mongoose.Types.ObjectId.isValid(id))
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return badRequest("Invalid property ID");
-
-    // ── Build query based on role ────────────────────────────────────────────
-    // Filter at DB level so unverified docs are never loaded for guests/buyers
-    let propertyQuery: Record<string, any> = {
-      _id: new mongoose.Types.ObjectId(id),
-    };
-
-    if (role === Role.ADMIN) {
-      // Admin sees any property regardless of status
-    } else if (role === Role.SELLER && userId) {
-      // Seller can only see their own verified listings
-      // Pending/rejected return notFound so the detail page is inaccessible
-      propertyQuery.sellerId = new mongoose.Types.ObjectId(userId);
-      // propertyQuery.verificationStatus = "verified";
-    } else {
-      // Guest / Buyer — verified only
-      propertyQuery.verificationStatus = "verified";
     }
 
-    const property = await Property.findOne(propertyQuery).lean();
-    if (!property) return notFound("Property not found");
+    // 1. FETCH FIRST
+    const property = await Property.findById(id).lean();
 
-    // Normalize missing verificationStatus for old docs (always present in response)
-    const verificationStatus = property.verificationStatus ?? "pending";
+    if (!property) {
+      return notFound("Property not found");
+    }
 
-    // ── Favorites ────────────────────────────────────────────────────────────
+    // 2. CHECK ACCESS
+    const isOwner =
+      userId && property.sellerId?.toString() === userId;
+
+    const isAdmin = role === Role.ADMIN;
+
+    const isVerified =
+      property.verificationStatus === "verified";
+
+    if (!isAdmin && !isOwner && !isVerified) {
+      return notFound("Property not found");
+    }
+
+    // 3. FAVORITES
     const isFavorite = userId
       ? await Favorite.exists({ userId, propertyId: id })
       : false;
 
     return NextResponse.json({
       ...property,
-      verificationStatus, // always present in response
+      verificationStatus:
+        property.verificationStatus ?? "pending",
       isFavorite: !!isFavorite,
     });
   } catch (err: any) {
