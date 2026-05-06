@@ -29,8 +29,8 @@ export async function fetchDashboardData(
   const userId = session.user.id;
   const role = session.user.role as Role;
   const isAdmin = role === Role.ADMIN;
-  const isSeller = role === Role.SELLER;
-  const isBuyer = role === Role.BUYER;
+  // buyer and seller are identical — both can own listings
+  const isUser = !isAdmin;
 
   const now = new Date();
   const thisMonth = monthRange(now.getFullYear(), now.getMonth());
@@ -40,16 +40,23 @@ export async function fetchDashboardData(
     lastMonthDate.getMonth(),
   );
 
-  const propertyQuery = isSeller ? { sellerId: new mongoose.Types.ObjectId(userId) } : {};
-  const propertyQueryPlain = isSeller ? { sellerId: userId } : {};
+  // Non-admins: all counts scoped to their own listings
+  const propertyQuery = isUser
+    ? { sellerId: new mongoose.Types.ObjectId(userId) }
+    : {};
+  const propertyQueryPlain = isUser ? { sellerId: userId } : {};
 
   const verifiedPropertyIds = await Property.find({ verificationStatus: "verified" })
     .select("_id")
     .lean()
     .then((props) => props.map((p) => p._id));
 
-  // Recent properties with signed image URLs
-  const recentPropertiesRaw = await Property.find({ ...propertyQueryPlain, verificationStatus: "verified" })
+  // Recent properties:
+  //   admin → most recent verified listings across the platform
+  //   user  → their own listings (any verification status) so newly created ones appear immediately
+  const recentPropertiesRaw = await Property.find(
+    isAdmin ? { verificationStatus: "verified" } : { sellerId: userId },
+  )
     .sort({ createdAt: -1 })
     .limit(5)
     .select("title location price views messagesCount status verificationStatus")
@@ -71,7 +78,6 @@ export async function fetchDashboardData(
 
   const usersCol = db.collection("users");
 
-  // Core counts + month-over-month for trend badges
   const [
     [
       totalProperties,
@@ -111,21 +117,21 @@ export async function fetchDashboardData(
     isAdmin
       ? Property.countDocuments({ verificationStatus: "pending" })
       : Promise.resolve(0),
-    isBuyer
+    // favorites count for all authenticated users
+    isUser
       ? Favorite.countDocuments({ userId })
       : Promise.resolve(0),
+    // property status breakdown scoped to the user's own listings
     Property.aggregate([
-      ...(isSeller ? [{ $match: { sellerId: new mongoose.Types.ObjectId(userId) } }] : []),
+      ...(isUser ? [{ $match: { sellerId: new mongoose.Types.ObjectId(userId) } }] : []),
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]),
     isAdmin
       ? Appointment.find({ propertyId: { $in: verifiedPropertyIds } }).sort({ createdAt: -1 }).limit(4).lean()
-      : (isSeller || isBuyer)
-        ? Appointment.find({ participants: userId, propertyId: { $in: verifiedPropertyIds } }).sort({ createdAt: -1 }).limit(4).lean()
-        : Promise.resolve([]),
+      : Appointment.find({ participants: userId, propertyId: { $in: verifiedPropertyIds } }).sort({ createdAt: -1 }).limit(4).lean(),
   ]);
 
-  // Build role-specific stat cards
+  // Stat cards — same set for buyer and seller, only admin differs
   const stats: any[] = [
     {
       label: "Total Properties",
@@ -154,25 +160,20 @@ export async function fetchDashboardData(
             change: "0%",
           },
         ]
-      : isSeller
-        ? [
-            {
-              label: "Sold Properties",
-              value: soldCount,
-              icon: "TrendingUp",
-              change: calcChange(soldThisMonth, soldLastMonth),
-            },
-            { label: "Revenue (MTD)", value: "NPR 0", icon: "DollarSign", change: "0%" },
-          ]
-        : [
-            {
-              label: "Saved Properties",
-              value: favoritesCount,
-              icon: "Heart",
-              change: "0%",
-            },
-            { label: "Revenue (MTD)", value: "NPR 0", icon: "DollarSign", change: "0%" },
-          ]),
+      : [
+          {
+            label: "Sold Properties",
+            value: soldCount,
+            icon: "TrendingUp",
+            change: calcChange(soldThisMonth, soldLastMonth),
+          },
+          {
+            label: "Saved Properties",
+            value: favoritesCount,
+            icon: "Heart",
+            change: "0%",
+          },
+        ]),
   ];
 
   return JSON.parse(
