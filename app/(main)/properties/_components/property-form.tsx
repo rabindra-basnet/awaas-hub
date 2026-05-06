@@ -67,7 +67,7 @@ const formSchema = z.object({
   nearTransport: z.string().optional(),
   nearAtm: z.string().optional(),
   nearRestaurant: z.string().optional(),
-  videoUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  videoUrl: z.union([z.literal(""), z.string().url("Must be a valid URL")]).optional(),
 });
 
 export type PropertyStatus = z.infer<typeof formSchema>["status"];

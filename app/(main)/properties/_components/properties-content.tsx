@@ -462,6 +462,10 @@ export default function PropertiesContent() {
                     onDelete={(id) =>
                       requireAuth(() => deleteProperty.mutate(id))
                     }
+                    isDeleting={
+                      deleteProperty.isPending &&
+                      deleteProperty.variables === p._id
+                    }
                   />
                 ))}
               </div>
@@ -499,12 +503,14 @@ function PropertyCard({
   isFavorite,
   onFavorite,
   onDelete,
+  isDeleting,
 }: {
   property: any;
   canManage: boolean;
   isFavorite: boolean;
   onFavorite: () => void;
   onDelete: (id: string) => void;
+  isDeleting?: boolean;
 }) {
   const router = useRouter();
   const [imgIdx, setImgIdx] = useState(0);
@@ -648,7 +654,9 @@ function PropertyCard({
                     <div className="p-1">
                       <DeletePropertyDialog
                         propertyId={p._id}
+                        propertyTitle={p.title}
                         onDelete={onDelete}
+                        isDeleting={isDeleting}
                       />
                     </div>
                   </DropdownMenuContent>
