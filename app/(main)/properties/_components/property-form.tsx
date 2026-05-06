@@ -35,6 +35,7 @@ import {
   Pentagon,
   Search,
   Trash2,
+  Video,
 } from "lucide-react";
 import { usePropertyImages } from "@/lib/client/queries/properties.queries";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,7 @@ const formSchema = z.object({
   nearTransport: z.string().optional(),
   nearAtm: z.string().optional(),
   nearRestaurant: z.string().optional(),
+  videoUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
 });
 
 export type PropertyStatus = z.infer<typeof formSchema>["status"];
@@ -877,6 +879,7 @@ export default function PropertyForm({
       nearTransport: initialData?.nearTransport || "",
       nearAtm: initialData?.nearAtm || "",
       nearRestaurant: initialData?.nearRestaurant || "",
+      videoUrl: initialData?.videoUrl || "",
     },
   });
 
@@ -1382,9 +1385,26 @@ export default function PropertyForm({
               </Field>
             ))}
 
-          {/* ── STEP 5: Images (was step 4) ── */}
+          {/* ── STEP 5: Images + Video ── */}
           {step === 5 && (
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-2 space-y-5">
+              <Field label="Video Tour URL" error={errors.videoUrl?.message}>
+                <div className="relative">
+                  <Video
+                    size={14}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                  />
+                  <Input
+                    placeholder="https://youtube.com/watch?v=... or direct video URL"
+                    className="h-10 rounded-xl text-sm pl-8"
+                    {...register("videoUrl")}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Paste a YouTube, Vimeo, or direct video link for the virtual tour.
+                </p>
+              </Field>
+
               {loadingExisting ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {[1, 2, 3].map((i) => (

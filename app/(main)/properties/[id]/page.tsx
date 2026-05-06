@@ -66,6 +66,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 export default function PropertyPage({
   params,
@@ -172,7 +173,8 @@ export default function PropertyPage({
 
   const isSold = property.status === "sold";
   const showSoldBanner = isSold;
-  const showVerifyBanner = isAdmin && property.verificationStatus === "pending" && !isSold;
+  const showVerifyBanner =
+    isAdmin && property.verificationStatus === "pending" && !isSold;
 
   const overviewItems = [
     { label: "Type", value: category || "N/A", icon: Building2 },
@@ -234,12 +236,23 @@ export default function PropertyPage({
   ];
 
   const premiumFeatures = [
-    {
-      icon: Video,
-      label: "Virtual Tour",
-      desc: "360° immersive walkthrough",
-      href: `/properties/${id}/tour`,
-    },
+    ...(property.videoUrl
+      ? [
+          {
+            icon: Video,
+            label: "Virtual Tour",
+            desc: "360° immersive walkthrough",
+            href: `/properties/${id}/tour?videourl=${property.videoUrl}`,
+          },
+        ]
+      : [
+          {
+            icon: Video,
+            label: "Virtual Tour",
+            desc: "360° immersive walkthrough",
+            href: `/properties/${id}/tour`,
+          },
+        ]),
     {
       icon: Crown,
       label: "Premium Map",
@@ -303,16 +316,21 @@ export default function PropertyPage({
                   "h-8 gap-1.5 text-xs font-semibold",
                   isSold &&
                     "border-rose-400 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-700",
-                  !isSold && property.verificationStatus === "pending" &&
+                  !isSold &&
+                    property.verificationStatus === "pending" &&
                     "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-700",
-                  !isSold && property.verificationStatus === "verified" &&
+                  !isSold &&
+                    property.verificationStatus === "verified" &&
                     "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400",
-                  !isSold && property.verificationStatus === "rejected" &&
+                  !isSold &&
+                    property.verificationStatus === "rejected" &&
                     "border-rose-400 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400",
                 )}
               >
                 {isSold ? (
-                  <><BadgeDollarSign size={13} /> Sold</>
+                  <>
+                    <BadgeDollarSign size={13} /> Sold
+                  </>
                 ) : (
                   <>
                     <Shield size={13} />
@@ -358,7 +376,10 @@ export default function PropertyPage({
           <div className="max-w-screen-xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-rose-500/15 flex items-center justify-center shrink-0">
-                <BadgeDollarSign size={15} className="text-rose-600 dark:text-rose-400" />
+                <BadgeDollarSign
+                  size={15}
+                  className="text-rose-600 dark:text-rose-400"
+                />
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-rose-800 dark:text-rose-300">
@@ -571,22 +592,30 @@ export default function PropertyPage({
               </div>
             </div>
 
-            <div className={cn(
-              "rounded-2xl px-5 py-4 border",
-              isSold
-                ? "bg-rose-50/60 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800"
-                : "bg-muted/40 border-border/60",
-            )}>
-              <p className={cn(
-                "text-[11px] font-semibold uppercase tracking-widest mb-1",
-                isSold ? "text-rose-500 dark:text-rose-400" : "text-muted-foreground",
-              )}>
+            <div
+              className={cn(
+                "rounded-2xl px-5 py-4 border",
+                isSold
+                  ? "bg-rose-50/60 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800"
+                  : "bg-muted/40 border-border/60",
+              )}
+            >
+              <p
+                className={cn(
+                  "text-[11px] font-semibold uppercase tracking-widest mb-1",
+                  isSold
+                    ? "text-rose-500 dark:text-rose-400"
+                    : "text-muted-foreground",
+                )}
+              >
                 {isSold ? "Sold Price" : "Asking Price"}
               </p>
-              <span className={cn(
-                "text-3xl font-black tracking-tight",
-                isSold ? "text-rose-600 dark:text-rose-400" : "text-primary",
-              )}>
+              <span
+                className={cn(
+                  "text-3xl font-black tracking-tight",
+                  isSold ? "text-rose-600 dark:text-rose-400" : "text-primary",
+                )}
+              >
                 NPR{" "}
                 {price ? new Intl.NumberFormat("en-IN").format(price) : "N/A"}
               </span>
@@ -632,8 +661,8 @@ export default function PropertyPage({
             {!isAnonymous && (
               <div className="space-y-2">
                 {premiumFeatures.map(({ icon: Icon, label, desc, href }) => {
-                  // Owner and admin always have access
-                  const canAccess = hasFullAccess || alreadyUnlocked;
+                  // Owner and admin always have access; so do users who can access the contact page
+                  const canAccess = hasFullAccess || alreadyUnlocked || hasContactAccess;
 
                   return (
                     <Link
@@ -651,10 +680,8 @@ export default function PropertyPage({
                           e.preventDefault();
                           if (isGuest) {
                             router.push(`/login?redirectTo=/properties/${id}`);
-                          } else if (totalCredits > 0) {
-                            handleContactClick();
                           } else {
-                            router.push(`/properties/${id}/contact`);
+                            toast.info("You'll get access to this after purchasing the contact package.");
                           }
                         }
                       }}

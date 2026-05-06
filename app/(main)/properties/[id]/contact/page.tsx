@@ -7,342 +7,281 @@ import {
   Crown,
   Lock,
   Mail,
-  MessageCircle,
-  Send,
   ShieldCheck,
   BadgeCheck,
   MapPin,
-  Zap,
   Phone,
   CalendarCheck,
-  ChevronRight,
   Eye,
   EyeOff,
   Sparkles,
-  BarChart3,
-  Contact,
-  Building2,
+  HeadphonesIcon,
+  CheckCircle2,
   TrendingUp,
-  Loader2,
+  Home,
+  ExternalLink,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/client/auth-client";
-import { usePropertySeller, type SellerProfile } from "@/lib/client/queries/seller.queries";
+import {
+  usePropertySeller,
+  type SellerProfile,
+} from "@/lib/client/queries/seller.queries";
+import { useProperty } from "@/lib/client/queries/properties.queries";
+import { useUserNotificationsChannel } from "@/lib/client/queries/support.queries";
+import PropertyDirectChat from "../../_components/PropertyDirectChat";
+import SellerChatInbox from "../../_components/SellerChatInbox";
 
-// ── Shared helpers ────────────────────────────────────────────────
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 
-function StatItem({ value, label }: { value: string | number; label: string }) {
+function ContactPageSkeleton() {
   return (
-    <div className="flex flex-col items-center gap-0.5 flex-1">
-      <span className="text-lg font-black text-foreground leading-none">{value}</span>
-      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-        {label}
-      </span>
+    <div className="min-h-screen bg-background">
+      <div className="sticky top-0 z-20 h-14 border-b border-border/40 bg-background/95 backdrop-blur-xl" />
+      <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="w-full lg:w-[300px] shrink-0 space-y-4">
+            <div className="rounded-3xl h-64 bg-muted/30 animate-pulse" />
+            <div className="rounded-3xl h-44 bg-muted/30 animate-pulse" />
+            <div className="rounded-3xl h-36 bg-muted/30 animate-pulse" />
+          </div>
+          <div className="flex-1 rounded-3xl h-[520px] bg-muted/30 animate-pulse" />
+        </div>
+      </div>
     </div>
   );
 }
+
+// ── Premium Lock Overlay ──────────────────────────────────────────────────────
 
 function PremiumBlur({ children, locked }: { children: React.ReactNode; locked: boolean }) {
   if (!locked) return <>{children}</>;
   return (
     <div className="relative select-none">
-      <div className="blur-sm opacity-40 pointer-events-none">{children}</div>
+      <div className="blur-sm opacity-30 pointer-events-none">{children}</div>
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="flex items-center gap-1.5 bg-background/80 backdrop-blur-md border border-border/60 rounded-full px-3 py-1.5 shadow-lg">
-          <Lock size={11} className="text-amber-500" />
-          <span className="text-[11px] font-bold text-muted-foreground">Premium only</span>
-        </div>
+        <span className="inline-flex items-center gap-1.5 bg-background/90 backdrop-blur border border-amber-400/30 text-amber-600 dark:text-amber-400 rounded-full px-3 py-1 text-[10px] font-bold tracking-wide shadow">
+          <Lock size={10} />
+          Premium only
+        </span>
       </div>
     </div>
   );
 }
 
-// ── Skeleton ──────────────────────────────────────────────────────
+// ── Seller Hero Card ──────────────────────────────────────────────────────────
 
-function ContactPageSkeleton() {
+function SellerHeroCard({ seller, hasAccess }: { seller: SellerProfile; hasAccess: boolean }) {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="w-full max-w-[95vw] mx-auto px-4 lg:px-6 py-6 space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
-          <div className="space-y-1.5">
-            <div className="h-4 w-32 rounded bg-muted animate-pulse" />
-            <div className="h-3 w-20 rounded bg-muted animate-pulse" />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-2xl border border-border/60 h-80 bg-muted/20 animate-pulse" />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Card 1 — Seller Profile ───────────────────────────────────────
-
-function SellerProfileCard({
-  seller,
-  hasAccess,
-}: {
-  seller: SellerProfile;
-  hasAccess: boolean;
-}) {
-  return (
-    <Card className="rounded-2xl border-border/60 shadow-sm overflow-hidden h-full flex flex-col">
-      {/* decorative header strip */}
-      <div className="h-14 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent relative shrink-0">
+    <div className="rounded-3xl overflow-hidden border border-border/50 shadow-sm">
+      {/* Banner */}
+      <div className="relative h-20 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent">
         <div
-          className="absolute inset-0 opacity-20 dark:opacity-10"
+          className="absolute inset-0 opacity-30"
           style={{
             backgroundImage:
-              "repeating-linear-gradient(45deg, hsl(var(--primary)/0.3) 0, hsl(var(--primary)/0.3) 1px, transparent 0, transparent 50%)",
-            backgroundSize: "8px 8px",
+              "radial-gradient(circle at 20% 50%, hsl(var(--primary)/0.4) 0%, transparent 60%), radial-gradient(circle at 80% 20%, hsl(var(--primary)/0.2) 0%, transparent 50%)",
+          }}
+        />
+        <div
+          className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(135deg, currentColor 0, currentColor 1px, transparent 0, transparent 8px)",
+            backgroundSize: "12px 12px",
           }}
         />
       </div>
 
-      <CardContent className="px-5 pb-5 -mt-7 flex flex-col flex-1">
-        {/* Avatar */}
+      <div className="bg-card px-5 pb-5 -mt-7">
+        {/* Avatar + badge */}
         <div className="flex items-end justify-between mb-3">
           <div className="relative">
-            <Avatar className="w-14 h-14 border-[3px] border-background shadow-lg">
-              <AvatarImage src={seller.image ?? undefined} />
-              <AvatarFallback className="text-sm font-black bg-primary/10 text-primary">
-                {seller.initials}
-              </AvatarFallback>
-            </Avatar>
-            <span className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-[3px] border-2 border-background">
-              <BadgeCheck size={9} className="text-white" />
+            <div className="p-0.5 rounded-full bg-gradient-to-br from-primary/60 to-primary/20 shadow-lg">
+              <Avatar className="w-14 h-14 border-2 border-card">
+                <AvatarImage src={seller.image ?? undefined} />
+                <AvatarFallback className="text-base font-black bg-primary/10 text-primary">
+                  {seller.initials}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-card shadow">
+              <BadgeCheck size={10} className="text-white" />
             </span>
           </div>
-          <Badge variant="outline" className="text-[10px] font-bold capitalize px-2 py-0.5">
-            {seller.role}
-          </Badge>
+
+          {hasAccess ? (
+            <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-400/25 rounded-full px-2.5 py-1 text-[10px] font-bold">
+              <CheckCircle2 size={10} />
+              Unlocked
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-400/25 rounded-full px-2.5 py-1 text-[10px] font-bold">
+              <Crown size={10} />
+              Premium
+            </span>
+          )}
         </div>
 
-        {/* Name */}
-        <div className="mb-0.5 flex items-center gap-1.5 flex-wrap">
-          <h2 className="text-sm font-black text-foreground">{seller.name}</h2>
-        </div>
+        {/* Name + meta */}
+        <h2 className="text-[15px] font-black text-foreground leading-tight">{seller.name}</h2>
+        <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
+          <MapPin size={9} className="text-primary/60" />
+          AawasHub · Since {seller.memberSince}
+        </p>
 
-        {/* Member since */}
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-3 flex-wrap">
-          <MapPin size={10} className="text-destructive shrink-0" />
-          AawasHub
-          <span className="mx-1">·</span>
-          Member since {seller.memberSince}
-        </div>
-
-        {/* Trust badges */}
-        <div className="flex flex-wrap gap-1 mb-3">
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-2 mt-4">
           {[
-            hasAccess ? "Access Granted" : "Verified Agent",
-            "ID Verified",
-          ].map((b) => (
-            <Badge key={b} variant="outline" className="text-[9px] gap-1 font-semibold px-1.5 py-0.5">
-              <ShieldCheck size={9} className="text-green-500" />
-              {b}
-            </Badge>
+            { n: seller.totalListings, label: "Listings" },
+            { n: seller.soldCount, label: "Sold" },
+            { n: seller.activeListings, label: "Active" },
+          ].map(({ n, label }) => (
+            <div
+              key={label}
+              className="flex flex-col items-center bg-muted/30 rounded-2xl py-2.5 gap-0.5"
+            >
+              <span className="text-[18px] font-black leading-none tabular-nums text-foreground">
+                {n}
+              </span>
+              <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
+                {label}
+              </span>
+            </div>
           ))}
         </div>
 
-        <Separator className="mb-3" />
-
-        {/* Stats row */}
-        <div className="flex gap-2 divide-x divide-border">
-          <StatItem value={seller.totalListings} label="Listings" />
-          <StatItem value={seller.soldCount} label="Sold" />
-          <StatItem value={seller.activeListings} label="Active" />
+        {/* Verified chips */}
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {["ID Verified", "Licensed Agent"].map((label) => (
+            <span
+              key={label}
+              className="inline-flex items-center gap-1 text-[9px] font-semibold text-muted-foreground bg-muted/50 border border-border/50 rounded-full px-2 py-0.5"
+            >
+              <ShieldCheck size={8} className="text-emerald-500" />
+              {label}
+            </span>
+          ))}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
-// ── Card 2 — Contact Methods ──────────────────────────────────────
+// ── Contact Details Card ──────────────────────────────────────────────────────
 
-function ContactMethodsCard({
+function ContactDetailsCard({
   seller,
   hasAccess,
   showPhone,
   setShowPhone,
-  onMessageClick,
   id,
 }: {
   seller: SellerProfile;
   hasAccess: boolean;
   showPhone: boolean;
   setShowPhone: React.Dispatch<React.SetStateAction<boolean>>;
-  onMessageClick: () => void;
   id: string;
 }) {
   return (
-    <Card className="rounded-2xl border-border/60 shadow-sm h-full flex flex-col">
-      <CardHeader className="px-5 pt-5 pb-3 shrink-0">
-        <CardTitle className="text-sm font-black flex items-center gap-2">
-          <Contact size={15} className="text-primary" />
-          Contact Options
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent className="px-5 pb-5 flex flex-col gap-3 flex-1">
-        {/* Access indicator */}
-        <div className={cn(
-          "flex items-center gap-2 rounded-xl px-3 py-2 border",
-          hasAccess
-            ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900/60"
-            : "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/60",
-        )}>
-          <Zap size={13} className={cn(
-            "shrink-0",
-            hasAccess ? "text-green-600 dark:text-green-400" : "text-amber-500",
-          )} />
-          <p className={cn(
-            "text-[10px] font-semibold",
-            hasAccess ? "text-green-700 dark:text-green-400" : "text-amber-700 dark:text-amber-400",
-          )}>
-            {hasAccess
-              ? "Full contact details unlocked"
-              : "Upgrade to access contact details"}
-          </p>
-        </div>
-
-        {/* In-app Message */}
-        <button
-          disabled={!hasAccess}
-          onClick={() => hasAccess && onMessageClick()}
+    <div className="rounded-3xl border border-border/50 bg-card shadow-sm overflow-hidden">
+      <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+        <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+          Contact
+        </span>
+        <span
           className={cn(
-            "w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left group",
+            "text-[9px] font-bold px-2 py-0.5 rounded-full",
             hasAccess
-              ? "border-border bg-card hover:border-primary/50 hover:bg-primary/5 active:scale-[0.98] cursor-pointer"
-              : "border-border/50 bg-muted/30 cursor-not-allowed opacity-70",
+              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              : "bg-amber-500/10 text-amber-600 dark:text-amber-400",
           )}
         >
-          <span className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-            <MessageCircle size={16} />
-          </span>
-          <span className="flex-1 min-w-0">
-            <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5">
-              In-app Message
-            </p>
-            <p className="text-[12px] font-bold text-foreground">Send a direct message</p>
-          </span>
-          {hasAccess ? (
-            <ChevronRight size={15} className="text-muted-foreground group-hover:text-primary transition-colors" />
-          ) : (
-            <Lock size={12} className="text-amber-500 shrink-0" />
-          )}
-        </button>
+          {hasAccess ? "Unlocked" : "Locked"}
+        </span>
+      </div>
 
-        {/* Email */}
-        <div className={cn("rounded-xl border overflow-hidden", hasAccess ? "border-border" : "border-border/50")}>
-          <PremiumBlur locked={!hasAccess}>
-            <a
-              href={hasAccess && seller.email ? `mailto:${seller.email}` : undefined}
-              className={cn(
-                "flex items-center gap-3 p-3 bg-card transition-all text-left group",
-                hasAccess ? "hover:bg-orange-50 dark:hover:bg-orange-950/20 cursor-pointer" : "cursor-default",
-              )}
-            >
-              <span className="w-9 h-9 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-500 flex items-center justify-center shrink-0">
-                <Mail size={16} />
-              </span>
-              <span className="flex-1 min-w-0">
-                <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5">
-                  Email
-                </p>
-                <p className="text-[12px] font-bold text-foreground truncate">
-                  {hasAccess && seller.email ? seller.email : "••••••@email.com"}
-                </p>
-              </span>
-              {hasAccess ? (
-                <ChevronRight size={15} className="text-muted-foreground group-hover:text-orange-500 transition-colors" />
-              ) : (
-                <Lock size={12} className="text-amber-500 shrink-0" />
-              )}
-            </a>
-          </PremiumBlur>
-        </div>
+      <div className="px-4 pb-4 space-y-2">
+        {/* Email row */}
+        <PremiumBlur locked={!hasAccess}>
+          <a
+            href={hasAccess && seller.email ? `mailto:${seller.email}` : undefined}
+            className={cn(
+              "flex items-center gap-3 rounded-2xl px-3 py-3 border transition-all group",
+              hasAccess
+                ? "border-border/50 hover:border-primary/30 hover:bg-primary/5 cursor-pointer"
+                : "border-border/30 cursor-default",
+            )}
+          >
+            <span className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center shrink-0">
+              <Mail size={14} className="text-orange-500" />
+            </span>
+            <span className="flex-1 min-w-0">
+              <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold">
+                Email
+              </p>
+              <p className="text-[12px] font-semibold text-foreground truncate mt-0.5">
+                {hasAccess && seller.email ? seller.email : "••••••@•••••.com"}
+              </p>
+            </span>
+            {hasAccess && (
+              <ExternalLink size={12} className="text-muted-foreground/50 group-hover:text-primary transition-colors" />
+            )}
+          </a>
+        </PremiumBlur>
 
-        {/* Phone — not stored in schema, show placeholder */}
-        <div className="rounded-xl border border-border/50 overflow-hidden">
-          <PremiumBlur locked={!hasAccess}>
-            <div
-              className={cn("flex items-center gap-3 p-3 bg-card", hasAccess ? "cursor-pointer" : "cursor-default")}
-              onClick={() => hasAccess && setShowPhone((v) => !v)}
-            >
-              <span className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <Phone size={16} />
-              </span>
-              <span className="flex-1 min-w-0">
-                <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold mb-0.5">
-                  Phone
-                </p>
-                <p className="text-[12px] font-bold text-foreground">
-                  {hasAccess
-                    ? showPhone
-                      ? "Contact via message"
-                      : "+977 98•-•••-••••"
-                    : "+977 98•-•••-••••"}
-                </p>
-              </span>
-              {hasAccess ? (
-                showPhone ? (
-                  <EyeOff size={13} className="text-muted-foreground" />
-                ) : (
-                  <Eye size={13} className="text-muted-foreground" />
-                )
-              ) : (
-                <Lock size={12} className="text-amber-500 shrink-0" />
-              )}
-            </div>
-          </PremiumBlur>
-        </div>
+        {/* Phone row */}
+        <PremiumBlur locked={!hasAccess}>
+          <button
+            onClick={() => hasAccess && setShowPhone((v) => !v)}
+            className={cn(
+              "w-full flex items-center gap-3 rounded-2xl px-3 py-3 border transition-all text-left",
+              hasAccess
+                ? "border-border/50 hover:border-primary/30 hover:bg-primary/5 cursor-pointer"
+                : "border-border/30 cursor-default",
+            )}
+          >
+            <span className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center shrink-0">
+              <Phone size={14} className="text-emerald-500" />
+            </span>
+            <span className="flex-1 min-w-0">
+              <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold">
+                Phone
+              </p>
+              <p className="text-[12px] font-semibold text-foreground mt-0.5">
+                {hasAccess && showPhone ? "Send a message below" : "+977 98•-•••-••••"}
+              </p>
+            </span>
+            {hasAccess && (
+              showPhone ? <EyeOff size={12} className="text-muted-foreground/50" /> : <Eye size={12} className="text-muted-foreground/50" />
+            )}
+          </button>
+        </PremiumBlur>
 
         {/* Book visit */}
-        <div className="mt-auto pt-1">
-          <Card className="rounded-xl border-primary/20 bg-primary/5">
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <CalendarCheck size={15} className="text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="text-[11px] font-bold text-foreground">Schedule a Site Visit</p>
-                <p className="text-[9px] text-muted-foreground mt-0.5">Book in-person appointment</p>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-[10px] font-bold h-7 rounded-lg border-primary/30 px-2.5"
-                onClick={() => (window.location.href = `/appointments/new?propertyId=${id}`)}
-              >
-                Book
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </CardContent>
-    </Card>
+        <button
+          onClick={() => (window.location.href = `/appointments/new?propertyId=${id}`)}
+          className="w-full flex items-center gap-3 rounded-2xl px-3 py-3 border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all text-left group"
+        >
+          <span className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <CalendarCheck size={14} className="text-primary" />
+          </span>
+          <span className="flex-1">
+            <p className="text-[11px] font-bold text-foreground">Schedule a Visit</p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">Book in-person appointment</p>
+          </span>
+          <span className="text-[10px] font-bold text-primary bg-primary/10 group-hover:bg-primary/20 px-2.5 py-1 rounded-full transition-all">
+            Book
+          </span>
+        </button>
+      </div>
+    </div>
   );
 }
 
-// ── Card 3 — Seller Stats + Premium Gate ─────────────────────────
+// ── Seller Stats Card ─────────────────────────────────────────────────────────
 
 function SellerStatsCard({
   seller,
@@ -353,160 +292,121 @@ function SellerStatsCard({
   hasAccess: boolean;
   onUpgrade: () => void;
 }) {
-  const rows = [
-    { label: "Member since", value: seller.memberSince },
-    { label: "Total listings", value: seller.totalListings },
-    { label: "Properties sold", value: seller.soldCount, highlight: true },
-    { label: "Currently booked", value: seller.bookedCount },
-    { label: "Active listings", value: seller.activeListings },
-  ];
-
   const soldPct = seller.totalListings > 0
     ? Math.round((seller.soldCount / seller.totalListings) * 100)
     : 0;
-
   const activePct = seller.totalListings > 0
     ? Math.round((seller.activeListings / seller.totalListings) * 100)
     : 0;
 
   return (
-    <Card className="rounded-2xl border-border/60 shadow-sm h-full flex flex-col">
-      <CardHeader className="px-5 pt-5 pb-3 shrink-0">
-        <CardTitle className="text-sm font-black flex items-center gap-2">
-          <BarChart3 size={15} className="text-primary" />
-          Seller Stats
-        </CardTitle>
-      </CardHeader>
+    <div className="rounded-3xl border border-border/50 bg-card shadow-sm overflow-hidden">
+      <div className="px-5 pt-4 pb-2">
+        <span className="text-[11px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+          <TrendingUp size={11} className="text-primary" />
+          Performance
+        </span>
+      </div>
 
-      <CardContent className="px-5 pb-5 flex flex-col gap-3 flex-1">
-        <div className="space-y-2">
-          {rows.map((row, i, arr) => (
-            <React.Fragment key={row.label}>
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] text-muted-foreground font-medium">{row.label}</span>
-                <span className={cn(
-                  "text-[11px] font-bold",
-                  (row as any).highlight
-                    ? "text-rose-600 dark:text-rose-400"
-                    : "text-foreground",
-                )}>
-                  {row.value}
-                </span>
-              </div>
-              {i < arr.length - 1 && <Separator />}
-            </React.Fragment>
+      <div className="px-5 pb-4 space-y-3">
+        {/* Bar rows */}
+        {[
+          { label: "Sold Rate", pct: soldPct, color: "bg-rose-500", track: "bg-rose-100 dark:bg-rose-950/40" },
+          { label: "Active Rate", pct: activePct, color: "bg-emerald-500", track: "bg-emerald-100 dark:bg-emerald-950/40" },
+        ].map(({ label, pct, color, track }) => (
+          <div key={label}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-semibold text-muted-foreground">{label}</span>
+              <span className="text-[11px] font-black text-foreground tabular-nums">{pct}%</span>
+            </div>
+            <div className={cn("h-1.5 rounded-full overflow-hidden", track)}>
+              <div
+                className={cn("h-full rounded-full transition-all duration-700", color)}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+        ))}
+
+        {/* Rows */}
+        <div className="pt-1 space-y-0 rounded-2xl border border-border/40 overflow-hidden">
+          {[
+            { label: "Member since", value: seller.memberSince },
+            { label: "Total listings", value: seller.totalListings },
+          ].map(({ label, value }, i, arr) => (
+            <div
+              key={label}
+              className={cn(
+                "flex items-center justify-between px-3.5 py-2.5 text-[11px]",
+                i % 2 === 0 ? "bg-muted/20" : "bg-transparent",
+                i < arr.length - 1 && "border-b border-border/30",
+              )}
+            >
+              <span className="text-muted-foreground font-medium">{label}</span>
+              <span className="font-bold text-foreground">{value}</span>
+            </div>
           ))}
         </div>
 
-        {/* Progress bars */}
-        <div className="space-y-3 pt-1">
-          <div>
-            <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5 font-semibold">
-              <span>Sold Rate</span>
-              <span>{soldPct}%</span>
+        {!hasAccess && (
+          <div className="rounded-2xl border border-amber-400/30 bg-amber-50/50 dark:bg-amber-950/20 p-3.5 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0 mt-0.5">
+              <Crown size={13} className="text-amber-500" />
             </div>
-            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-rose-500 transition-all duration-700"
-                style={{ width: `${soldPct}%` }}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="flex justify-between text-[10px] text-muted-foreground mb-1.5 font-semibold">
-              <span>Active Rate</span>
-              <span>{activePct}%</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-emerald-500 transition-all duration-700"
-                style={{ width: `${activePct}%` }}
-              />
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">Premium Access</p>
+              <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70 mt-0.5 leading-relaxed">
+                Unlock full contact details and direct email.
+              </p>
+              <button
+                onClick={onUpgrade}
+                className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-bold text-white bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded-full transition-colors"
+              >
+                <Sparkles size={10} />
+                Upgrade now
+              </button>
             </div>
           </div>
-        </div>
-
-        {/* Premium gate / active badge */}
-        <div className="mt-auto pt-2">
-          {!hasAccess ? (
-            <div className="relative overflow-hidden rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-950/20 p-4">
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-300/10 to-transparent pointer-events-none" />
-              <div className="flex items-start gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0 mt-0.5">
-                  <Crown size={15} className="text-amber-500" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-[11px] font-bold text-amber-700 dark:text-amber-400 mb-0.5">
-                    Premium Members Only
-                  </h3>
-                  <p className="text-[10px] text-amber-600/80 dark:text-amber-500/80 leading-relaxed">
-                    Unlock full contact details, direct email & messaging.
-                  </p>
-                  <Button
-                    size="sm"
-                    className="mt-2.5 h-7 text-[10px] font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-white gap-1.5 px-3"
-                    onClick={onUpgrade}
-                  >
-                    <Sparkles size={11} />
-                    Upgrade to Premium
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-green-200 dark:border-green-900/50 bg-green-50 dark:bg-green-950/20 p-3 flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center shrink-0">
-                <Crown size={13} className="text-amber-500" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-green-700 dark:text-green-400">
-                  Full Access Granted
-                </p>
-                <p className="text-[9px] text-green-600/80 dark:text-green-500/70">
-                  Seller details are fully visible
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        )}
+      </div>
+    </div>
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function ContactPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ContactPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const router = useRouter();
   const { data: session } = useSession();
 
   const { data, isLoading, isError } = usePropertySeller(id, !!session);
+  const { data: property } = useProperty(id);
 
-  const [msgOpen, setMsgOpen] = useState(false);
-  const [message, setMessage] = useState("");
-  const [sent, setSent] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
 
-  const handleSend = () => {
-    if (!message.trim()) return;
-    setSent(true);
-    setTimeout(() => {
-      setSent(false);
-      setMessage("");
-      setMsgOpen(false);
-    }, 2000);
-  };
+  useUserNotificationsChannel(session?.user?.id || undefined);
 
   if (isLoading) return <ContactPageSkeleton />;
 
   if (isError || !data) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <p className="text-sm font-semibold">Unable to load seller details</p>
-          <Button variant="outline" size="sm" onClick={() => router.push(`/properties/${id}`)}>
-            <ArrowLeft size={14} className="mr-1.5" /> Back to Property
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto">
+            <Home size={20} className="text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">Unable to load seller details</p>
+            <p className="text-xs text-muted-foreground mt-1">Something went wrong. Please try again.</p>
+          </div>
+          <Button variant="outline" size="sm" className="rounded-full gap-2" onClick={() => router.push(`/properties/${id}`)}>
+            <ArrowLeft size={14} />
+            Back to property
           </Button>
         </div>
       </div>
@@ -514,157 +414,130 @@ export default function ContactPage({ params }: { params: Promise<{ id: string }
   }
 
   const { seller, hasAccess } = data;
+  const propertyTitle = property?.title ?? "";
+  const currentUserId = session?.user?.id ?? "";
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Ambient gradient */}
+      {/* Soft ambient background */}
       <div
-        className="pointer-events-none fixed inset-0 z-0 opacity-30 dark:opacity-20"
+        className="pointer-events-none fixed inset-0 z-0 opacity-30 dark:opacity-15"
         style={{
           background:
-            "radial-gradient(ellipse 70% 50% at 50% -10%, hsl(var(--primary)/0.15), transparent)",
+            "radial-gradient(ellipse 80% 50% at 30% -10%, hsl(var(--primary)/0.12), transparent), radial-gradient(ellipse 60% 40% at 80% 90%, hsl(var(--primary)/0.06), transparent)",
         }}
       />
 
-      <div className="relative z-10 w-full max-w-[95vw] mx-auto px-4 lg:px-6 py-6 space-y-6">
-        {/* Page header */}
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full w-8 h-8 shrink-0"
+      {/* Top nav */}
+      <div className="sticky top-0 z-30 border-b border-border/40 bg-background/90 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 h-14 flex items-center gap-3">
+          <button
             onClick={() => router.push(`/properties/${id}`)}
+            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted/60 transition-colors shrink-0"
           >
-            <ArrowLeft size={16} />
-          </Button>
-          <div>
-            <h1 className="text-base font-bold tracking-tight">Contact Seller</h1>
-            <p className="text-[10px] text-muted-foreground font-medium">
-              Property #{id.slice(0, 8).toUpperCase()}
-            </p>
+            <ArrowLeft size={16} className="text-foreground" />
+          </button>
+
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <Avatar className="w-7 h-7 shrink-0">
+              <AvatarImage src={seller.image ?? undefined} />
+              <AvatarFallback className="text-[10px] font-black bg-primary/10 text-primary">
+                {seller.initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="text-sm font-bold leading-tight truncate">{seller.name}</p>
+              <p className="text-[10px] text-muted-foreground truncate">
+                #{id.slice(0, 8).toUpperCase()}
+              </p>
+            </div>
           </div>
-          <div className="ml-auto">
+
+          <div className="shrink-0">
             {hasAccess ? (
-              <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 border border-green-400/30 text-[10px] font-bold px-2 gap-1">
+              <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-400/25 rounded-full px-2.5 py-1 text-[10px] font-bold">
                 <ShieldCheck size={9} />
                 Access Granted
-              </Badge>
+              </span>
             ) : (
-              <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-400/30 text-[10px] font-bold px-2 gap-1">
+              <span className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-400/25 rounded-full px-2.5 py-1 text-[10px] font-bold">
                 <Crown size={9} />
                 Premium
-              </Badge>
+              </span>
             )}
           </div>
         </div>
+      </div>
 
-        {/* 3-column grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
-          <SellerProfileCard seller={seller} hasAccess={hasAccess} />
-          <ContactMethodsCard
-            seller={seller}
-            hasAccess={hasAccess}
-            showPhone={showPhone}
-            setShowPhone={setShowPhone}
-            onMessageClick={() => setMsgOpen(true)}
-            id={id}
-          />
-          <SellerStatsCard
-            seller={seller}
-            hasAccess={hasAccess}
-            onUpgrade={() => router.push(`/properties/${id}/contact`)}
-          />
-        </div>
+      {/* Main content */}
+      <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-8 py-6">
+        <div className="flex flex-col lg:flex-row gap-5 items-start">
 
-        {/* Bottom CTAs */}
-        <div className="flex gap-3">
-          {hasAccess ? (
-            <>
-              <Button
-                variant="outline"
-                className="flex-1 rounded-xl gap-2 font-bold text-[11px] h-11 border-2"
-                onClick={() => router.push(`/appointments/new?propertyId=${id}`)}
-              >
-                <CalendarCheck size={15} />
-                Book a Visit
-              </Button>
-              <Button
-                className="flex-1 rounded-xl gap-2 font-bold text-[11px] h-11"
-                onClick={() => setMsgOpen(true)}
-              >
-                <MessageCircle size={15} />
-                Message Seller
-              </Button>
-            </>
+          {/* ── Left sidebar ── */}
+          <div className="w-full lg:w-[290px] shrink-0 space-y-4">
+            <SellerHeroCard seller={seller} hasAccess={hasAccess} />
+            <ContactDetailsCard
+              seller={seller}
+              hasAccess={hasAccess}
+              showPhone={showPhone}
+              setShowPhone={setShowPhone}
+              id={id}
+            />
+            <SellerStatsCard
+              seller={seller}
+              hasAccess={hasAccess}
+              onUpgrade={() => router.push(`/properties/${id}`)}
+            />
+          </div>
+
+          {/* ── Chat panel ── */}
+          {(data.isOwner || data.isAdmin) ? (
+            <SellerChatInbox
+              propertyId={id}
+              currentUserId={currentUserId}
+              isAdmin={data.isAdmin}
+              isOwner={data.isOwner}
+            />
           ) : (
-            <Button
-              className="w-full rounded-xl gap-2 font-bold text-[12px] h-11 bg-amber-500 hover:bg-amber-600 text-white"
-              onClick={() => router.push(`/properties/${id}`)}
-            >
-              <Crown size={15} />
-              Unlock Seller Details — Get Premium Access
-            </Button>
+            <div className="flex-1 min-w-0 w-full rounded-3xl border border-border/50 overflow-hidden bg-card shadow-sm flex flex-col lg:sticky lg:top-[72px]">
+              {/* Chat header */}
+              <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border/40 bg-muted/20 shrink-0">
+                <div className="relative">
+                  <Avatar className="w-9 h-9">
+                    <AvatarImage src={seller.image ?? undefined} />
+                    <AvatarFallback className="text-[11px] font-black bg-primary/10 text-primary">
+                      {seller.initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-card" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-bold leading-tight">
+                    {seller.name.split(" ")[0]}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <HeadphonesIcon size={9} />
+                    Direct message · replies within 24h
+                  </p>
+                </div>
+                <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Online
+                </span>
+              </div>
+
+              {/* Chat body */}
+              <PropertyDirectChat
+                propertyId={id}
+                sellerId={seller.id}
+                sellerName={seller.name}
+                propertyTitle={propertyTitle}
+                currentUserId={currentUserId}
+              />
+            </div>
           )}
         </div>
       </div>
-
-      {/* Message dialog */}
-      <Dialog open={msgOpen} onOpenChange={setMsgOpen}>
-        <DialogContent className="max-w-sm mx-4 rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2.5 text-sm">
-              <Avatar className="w-7 h-7 border border-border">
-                <AvatarImage src={seller.image ?? undefined} />
-                <AvatarFallback className="text-xs font-black bg-primary/10 text-primary">
-                  {seller.initials}
-                </AvatarFallback>
-              </Avatar>
-              Message {seller.name.split(" ")[0]}
-            </DialogTitle>
-            <DialogDescription className="text-[11px]">
-              Your message will be delivered via the platform.
-            </DialogDescription>
-          </DialogHeader>
-
-          {sent ? (
-            <div className="flex flex-col items-center gap-3 py-8">
-              <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <Send size={22} className="text-green-600 dark:text-green-400" />
-              </div>
-              <p className="text-sm font-bold text-foreground">Message Sent!</p>
-              <p className="text-[11px] text-muted-foreground text-center">
-                {seller.name.split(" ")[0]} will get back to you shortly.
-              </p>
-            </div>
-          ) : (
-            <>
-              <Textarea
-                placeholder={`Hi ${seller.name.split(" ")[0]}, I'm interested in property #${id.slice(0, 6).toUpperCase()}. Could you please…`}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="min-h-[110px] resize-none text-sm rounded-xl"
-              />
-              <DialogFooter className="gap-2 sm:gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1 rounded-xl text-[11px] font-bold"
-                  onClick={() => setMsgOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="flex-1 rounded-xl gap-1.5 text-[11px] font-bold"
-                  disabled={!message.trim()}
-                  onClick={handleSend}
-                >
-                  <Send size={13} />
-                  Send Message
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

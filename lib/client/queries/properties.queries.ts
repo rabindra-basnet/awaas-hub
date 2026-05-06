@@ -38,6 +38,8 @@ export type PropertyForm = {
   nearTransport?: string;
   nearAtm?: string;
   nearRestaurant?: string;
+
+  videoUrl?: string;
 };
 
 /* ======================

@@ -99,6 +99,9 @@ export interface IProperty {
   nearTransport?: string;
   nearAtm?: string;
   nearRestaurant?: string;
+
+  // Video tour
+  videoUrl?: string;
 }
 
 // ── Reusable coordinate pair sub-schema ──────────────────────────────
@@ -231,6 +234,8 @@ const PropertySchema = new Schema<IProperty>({
   nearTransport: { type: String, trim: true, default: "" },
   nearAtm: { type: String, trim: true, default: "" },
   nearRestaurant: { type: String, trim: true, default: "" },
+
+  videoUrl: { type: String, trim: true, default: "" },
 });
 
 PropertySchema.index({ sellerId: 1, status: 1 });
