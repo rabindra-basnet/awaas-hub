@@ -25,6 +25,7 @@ function validateBoundary(boundaryPoints: unknown): boolean {
   if (boundaryPoints == null) return true; // allow empty / optional boundary
 
   if (!Array.isArray(boundaryPoints)) return false;
+  if (boundaryPoints.length === 0) return true; // no boundary drawn — valid
   if (boundaryPoints.length < 3) return false;
 
   return boundaryPoints.every((point) => {
@@ -128,7 +129,6 @@ export async function PUT(
 
     const { id } = await params;
     if (!mongoose.Types.ObjectId.isValid(id)) return badRequest("Invalid ID");
-
     const property = await Property.findById(id);
     if (!property) return notFound();
 
@@ -154,6 +154,7 @@ export async function PUT(
     ) {
       return badRequest("Invalid latitude — must be between -90 and 90");
     }
+    console.log("Bad request from here")
     if (
       fields.longitude != null &&
       (isNaN(fields.longitude) ||
@@ -163,12 +164,15 @@ export async function PUT(
       return badRequest("Invalid longitude — must be between -180 and 180");
     }
 
+    console.log("Bad request from here")
+
     // Validate boundary polygon
-    if (!validateBoundary(fields.boundaryPoints)) {
+    if (fields.boundaryPoints && !validateBoundary(fields.boundaryPoints)) {
       return badRequest(
         "Boundary requires at least 3 valid [lat, lng] coordinate pairs",
       );
     }
+    console.log("Bad request from here")
 
     /* ── Handle File Deletions ── */
     if (deletedFileIds?.length) {
