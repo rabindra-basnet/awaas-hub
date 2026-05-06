@@ -30,7 +30,7 @@ export async function fetchDashboardData(
   const role = session.user.role as Role;
   const isAdmin = role === Role.ADMIN;
   const isSeller = role === Role.SELLER;
-  const isBuyer = role === Role.BUYER;
+  const isBuyer = role === Role.BUYER ;
 
   const now = new Date();
   const thisMonth = monthRange(now.getFullYear(), now.getMonth());
