@@ -64,8 +64,13 @@ export async function GET(request: NextRequest) {
     const role = (session?.user?.role as Role) ?? Role.GUEST;
     const userId = session?.user?.id;
 
+    // Admin sees everything; authenticated users see verified + their own (any status); guests see verified only
     const baseQuery: Record<string, any> =
-      role === Role.ADMIN ? {} : { verificationStatus: "verified" };
+      role === Role.ADMIN
+        ? {}
+        : userId
+          ? { $or: [{ verificationStatus: "verified" }, { sellerId: userId }] }
+          : { verificationStatus: "verified" };
 
     const { searchParams } = new URL(request.url);
     const cursor = searchParams.get("cursor");
