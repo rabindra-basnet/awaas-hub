@@ -54,9 +54,9 @@ export const useUpdateAppointment = () =>
       return res.json();
     },
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: appointmentKeys.lists() });
+      getQueryClient().invalidateQueries({ queryKey: appointmentKeys.lists() });
       getQueryClient().invalidateQueries({ queryKey: appointmentKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      getQueryClient().invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Appointment updated successfully!");
     },
     onError: (err: Error) =>
@@ -83,9 +83,9 @@ export const useUpdateAppointmentStatus = () =>
       return res.json();
     },
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: appointmentKeys.lists() });
+      getQueryClient().invalidateQueries({ queryKey: appointmentKeys.lists() });
       getQueryClient().invalidateQueries({ queryKey: appointmentKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      getQueryClient().invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Appointment status updated!");
     },
     onError: (err: Error) =>
@@ -100,9 +100,9 @@ export const useDeleteAppointment = () =>
       return res.json();
     },
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: appointmentKeys.lists() });
+      getQueryClient().invalidateQueries({ queryKey: appointmentKeys.lists() }); ``
       getQueryClient().removeQueries({ queryKey: appointmentKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      getQueryClient().invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Appointment deleted successfully!");
     },
     onError: (err: Error) =>
