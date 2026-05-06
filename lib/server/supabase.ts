@@ -30,6 +30,34 @@ export async function broadcastPropertyTyping(
   return _broadcast(`property-${conversationId}`, "typing", payload);
 }
 
+export async function broadcastDirectChatMessage(
+  conversationId: string,
+  payload: object,
+) {
+  return _broadcast(`propchat-${conversationId}`, "new-message", payload);
+}
+
+export async function broadcastSellerInboxUpdate(
+  sellerId: string,
+  payload: object,
+) {
+  return _broadcast(`seller-inbox-${sellerId}`, "new-message", payload);
+}
+
+export async function broadcastBuyerChatNotification(
+  buyerId: string,
+  payload: object,
+) {
+  return _broadcast(`buyer-chat-${buyerId}`, "seller-reply", payload);
+}
+
+export async function broadcastAdminInboxUpdate(
+  propertyId: string,
+  payload: object,
+) {
+  return _broadcast(`admin-inbox-${propertyId}`, "new-message", payload);
+}
+
 async function _broadcast(topic: string, event: string, payload: object) {
   const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;

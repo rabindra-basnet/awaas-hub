@@ -27,3 +27,5 @@ yarn-error.log*
 next-env.d.ts
 
 storage/
+# Added by code-review-graph
+.code-review-graph/

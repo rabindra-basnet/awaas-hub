@@ -78,6 +78,9 @@ export function extractPropertyFields(body: Record<string, unknown>) {
     nearTransport: body.nearTransport,
     nearAtm: body.nearAtm,
     nearRestaurant: body.nearRestaurant,
+
+    // Video tour
+    videoUrl: body.videoUrl,
   };
 }
 

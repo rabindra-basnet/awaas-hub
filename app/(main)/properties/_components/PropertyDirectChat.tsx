@@ -7,15 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
-  useSupportThread,
-  useSendSupportMessage,
-  useSupportChannel,
-  type SupportMessage,
-} from "@/lib/client/queries/support.queries";
+  usePropertyDirectChat,
+  useSendDirectMessage,
+  useDirectChatChannel,
+  useBuyerChatChannel,
+  type DirectChatMessage,
+} from "@/lib/client/queries/property-chat.queries";
 import { format } from "date-fns";
 
 interface Props {
   propertyId: string;
+  sellerId: string;
+  sellerName: string;
   propertyTitle: string;
   currentUserId: string;
 }
@@ -28,11 +31,10 @@ function MessageBubble({
   msg,
   isOwn,
 }: {
-  msg: SupportMessage;
+  msg: DirectChatMessage;
   isOwn: boolean;
 }) {
   const isOptimistic = msg._id.startsWith("optimistic-");
-  const isAdmin = msg.senderRole === "admin";
 
   return (
     <div
@@ -45,13 +47,11 @@ function MessageBubble({
         <div className="flex items-center gap-1.5 px-1">
           <Avatar className="w-5 h-5">
             <AvatarFallback className="text-[9px] font-black bg-primary/10 text-primary">
-              {isAdmin
-                ? "AD"
-                : (msg.senderName?.slice(0, 2).toUpperCase() ?? "??")}
+              {msg.senderName?.slice(0, 2).toUpperCase() ?? "??"}
             </AvatarFallback>
           </Avatar>
           <span className="text-[10px] text-muted-foreground font-semibold">
-            {isAdmin ? "Support" : msg.senderName}
+            {msg.senderName}
           </span>
         </div>
       )}
@@ -87,25 +87,29 @@ function MessageBubble({
   );
 }
 
-export default function PropertySupportChat({
+export default function PropertyDirectChat({
   propertyId,
+  sellerId,
+  sellerName,
   propertyTitle,
   currentUserId,
 }: Props) {
   const [input, setInput] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { data, isLoading, error } = useSupportThread(
-    propertyId,
-    propertyTitle,
-  );
-  const sendMessage = useSendSupportMessage(propertyId, propertyTitle);
+  const { data, isLoading, error } = usePropertyDirectChat(propertyId, sellerId);
+  const sendMessage = useSendDirectMessage(propertyId, sellerId, propertyTitle);
 
-  useSupportChannel(data?.conversation._id, ["support-thread", propertyId]);
+  // Subscribe to real-time messages in this conversation
+  useDirectChatChannel(data?.conversation?._id, ["property-chat", propertyId]);
+  // Subscribe to seller-reply notifications (covers the case where supabase sends
+  // the seller reply via the buyer channel instead of the conversation channel)
+  useBuyerChatChannel(currentUserId || undefined, propertyId);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = messagesContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [data?.messages]);
 
   function handleSend() {
@@ -145,7 +149,7 @@ export default function PropertySupportChat({
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5 min-h-[260px] max-h-[340px] scroll-smooth">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5 min-h-[260px] max-h-[340px]">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center py-8">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -153,10 +157,10 @@ export default function PropertySupportChat({
             </div>
             <div>
               <p className="text-xs font-bold text-foreground">
-                Chat with Support
+                Message {sellerName.split(" ")[0]}
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Ask us anything about this property
+                Ask anything about this property
               </p>
             </div>
           </div>
@@ -169,7 +173,6 @@ export default function PropertySupportChat({
             />
           ))
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
@@ -186,7 +189,7 @@ export default function PropertySupportChat({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Message Support… (Enter to send)"
+            placeholder={`Message ${sellerName.split(" ")[0]}… (Enter to send)`}
             className="resize-none text-sm rounded-xl min-h-[40px] max-h-28 flex-1 py-2.5 leading-snug border-border/60 focus-visible:ring-primary/30 bg-background"
             rows={1}
             disabled={sendMessage.isPending}
