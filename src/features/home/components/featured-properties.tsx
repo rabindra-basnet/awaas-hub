@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { Suspense } from "react";
@@ -79,9 +79,7 @@ export default function FeaturedProperties() {
           <h2 className="text-3xl font-bold tracking-tight">{featured.title}</h2>
           <p className="text-muted-foreground mt-1">{featured.subtitle}</p>
         </div>
-        <Button asChild variant="outline" className="gap-2 hidden sm:flex">
-          <Link href="/properties">{featured.viewAll} <ArrowRight className="w-4 h-4" /></Link>
-        </Button>
+        <Button variant="outline" className="gap-2 hidden sm:flex" render={<Link href="/properties" />} nativeButton={false}>{featured.viewAll} <ArrowRight className="w-4 h-4" /></Button>
       </div>
 
       <Suspense fallback={<FeaturedSkeleton />}>
@@ -89,9 +87,7 @@ export default function FeaturedProperties() {
       </Suspense>
 
       <div className="flex justify-center sm:hidden">
-        <Button asChild variant="outline" className="gap-2">
-          <Link href="/properties">{featured.viewAll} <ArrowRight className="w-4 h-4" /></Link>
-        </Button>
+        <Button variant="outline" className="gap-2" render={<Link href="/properties" />} nativeButton={false}>{featured.viewAll} <ArrowRight className="w-4 h-4" /></Button>
       </div>
     </section>
   );

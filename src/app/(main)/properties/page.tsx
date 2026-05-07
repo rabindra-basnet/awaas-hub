@@ -7,6 +7,7 @@ import { Role } from "@/features/auth/rbac/access";
 import PropertiesContent from "@/features/properties/components/properties-content";
 
 export default async function PropertiesPage() {
+  // Session is optional — anonymous users can browse properties
   const session = await getServerSession();
   const qc = getQueryClient();
 

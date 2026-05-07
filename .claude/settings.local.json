@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl --silent --output /dev/null --write-out \"appointments: %{http_code}\\\\n\" \"http://localhost:3000/appointments\")",
+      "Bash(curl --silent --output /dev/null --write-out \"home: %{http_code}\\\\n\" \"http://localhost:3000/\")",
+      "Bash(curl --silent --output /dev/null --write-out \"login: %{http_code}\\\\n\" \"http://localhost:3000/login\")"
+    ]
+  }
+}

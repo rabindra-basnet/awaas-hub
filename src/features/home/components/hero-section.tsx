@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useLanguage } from "@/shared/components/language-provider";
@@ -26,16 +26,8 @@ export default function HeroSection() {
         <p className="text-lead max-w-xl mx-auto">{hero.subtitle}</p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button asChild size="lg" className="gap-2 h-12 px-8">
-            <Link href="/properties">
-              <Search className="w-4 h-4" />{hero.browseCta}
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="lg" className="gap-2 h-12 px-8">
-            <Link href="/signup">
-              {hero.listCta}<ArrowRight className="w-4 h-4" />
-            </Link>
-          </Button>
+          <Button size="lg" className="gap-2 h-12 px-8" render={<Link href="/properties" />} nativeButton={false}><Search className="w-4 h-4" />{hero.browseCta}</Button>
+          <Button variant="outline" size="lg" className="gap-2 h-12 px-8" render={<Link href="/signup" />} nativeButton={false}>{hero.listCta}<ArrowRight className="w-4 h-4" /></Button>
         </div>
 
         <div className="flex items-center justify-center gap-6 sm:gap-12 pt-4">

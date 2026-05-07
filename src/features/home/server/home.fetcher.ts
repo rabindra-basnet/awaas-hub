@@ -1,4 +1,5 @@
-import { getDb } from "@/shared/lib/db";
+import { unstable_cache } from "next/cache";
+import { connectToDatabase } from "@/shared/lib/db";
 import { Property } from "@/features/properties/models/property.model";
 import { File } from "@/features/files/models/file.model";
 import { getSignedDownloadUrl } from "@/features/files/server/r2";
@@ -16,8 +17,8 @@ export type FeaturedProperty = {
   imageUrl: string | null;
 };
 
-export async function fetchFeaturedProperties(): Promise<FeaturedProperty[]> {
-  await getDb();
+async function _fetchFeaturedProperties(): Promise<FeaturedProperty[]> {
+  await connectToDatabase();
 
   const properties = await Property.find({ verificationStatus: "verified", status: "available" })
     .sort({ createdAt: -1 })
@@ -52,3 +53,9 @@ export async function fetchFeaturedProperties(): Promise<FeaturedProperty[]> {
     }),
   );
 }
+
+export const fetchFeaturedProperties = unstable_cache(
+  _fetchFeaturedProperties,
+  ["featured-properties"],
+  { revalidate: 3600, tags: ["featured-properties"] },
+);

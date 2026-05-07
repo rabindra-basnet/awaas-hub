@@ -9,16 +9,16 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: { default: "AawasHub", template: "%s | AawasHub" },
-  description: "Nepal's modern real estate platform",
+  description: "Nepal's modern real estate platform — browse verified properties, connect with owners, and close deals.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="min-h-screen antialiased bg-background text-foreground">
-        <ThemeProvider>
+      <body className="antialiased bg-background text-foreground">
+        {/* <ThemeProvider> */}
           <Providers>{children}</Providers>
-        </ThemeProvider>
+        {/* </ThemeProvider> */}
       </body>
     </html>
   );

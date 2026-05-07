@@ -5,11 +5,11 @@ import DashboardHeader from "@/shared/components/dashboard-header";
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full overflow-hidden">
+      <div className="flex h-screen w-full overflow-auto">
         <AppSidebar />
-        <SidebarInset className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <SidebarInset className="flex flex-col flex-1 min-w-0 overflow-auto">
           <DashboardHeader />
-          <main className="flex-1 overflow-y-auto scrollbar-thin">
+          <main className="flex-1 min-h-0 overflow-auto">
             {children}
           </main>
         </SidebarInset>

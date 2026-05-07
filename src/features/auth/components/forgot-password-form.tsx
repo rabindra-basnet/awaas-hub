@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
@@ -68,11 +68,7 @@ export default function ForgotPasswordForm() {
             Try again
           </button>
         </p>
-        <Button asChild variant="outline" className="w-full h-11">
-          <Link href="/login">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to sign in
-          </Link>
-        </Button>
+        <Button variant="outline" className="w-full h-11" render={<Link href="/login" />} nativeButton={false}><ArrowLeft className="w-4 h-4 mr-2" /> Back to sign in</Button>
       </div>
     );
   }
@@ -115,11 +111,7 @@ export default function ForgotPasswordForm() {
         </Button>
       </form>
 
-      <Button asChild variant="ghost" className="w-full h-11">
-        <Link href="/login">
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to sign in
-        </Link>
-      </Button>
+      <Button variant="ghost" className="w-full h-11" render={<Link href="/login" />} nativeButton={false}><ArrowLeft className="w-4 h-4 mr-2" /> Back to sign in</Button>
     </div>
   );
 }

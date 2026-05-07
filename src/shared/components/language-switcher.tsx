@@ -2,7 +2,6 @@
 
 import { useLanguage } from "./language-provider";
 import { locales, type Locale } from "@/shared/lib/i18n";
-import { Button } from "./ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,11 +21,11 @@ export default function LanguageSwitcher() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1.5 h-8 px-2">
-          <Languages className="w-3.5 h-3.5" />
-          <span className="text-xs">{current.flag} {current.label}</span>
-        </Button>
+      <DropdownMenuTrigger
+        render={<button className="inline-flex items-center gap-1.5 h-8 px-2 rounded-md text-sm hover:bg-accent hover:text-accent-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer transition-colors" />}
+      >
+        <Languages className="w-3.5 h-3.5" />
+        <span className="text-xs">{current.flag} {current.label}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {locales.map((loc) => (

@@ -6,7 +6,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left — branding panel, hidden on mobile */}
       <div className="hidden lg:flex flex-col relative bg-primary text-primary-foreground overflow-hidden">
-        {/* Background pattern */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-primary-foreground/10 via-transparent to-transparent" />
         <div
           className="absolute inset-0 opacity-[0.03]"
@@ -16,7 +15,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         />
 
         <div className="relative flex flex-col h-full p-10">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 font-bold text-xl w-fit">
             <div className="w-8 h-8 rounded-lg bg-primary-foreground/15 flex items-center justify-center">
               <Building2 className="w-4 h-4" />
@@ -24,7 +22,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             AawasHub
           </Link>
 
-          {/* Center content */}
           <div className="flex-1 flex flex-col justify-center space-y-6 max-w-sm">
             <div className="space-y-3">
               <h1 className="text-4xl font-bold leading-tight">
@@ -53,7 +50,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
 
-          {/* Footer */}
           <p className="relative text-xs text-primary-foreground/40">
             © {new Date().getFullYear()} AawasHub. All rights reserved.
           </p>
@@ -62,7 +58,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       {/* Right — form panel */}
       <div className="flex flex-col min-h-screen lg:min-h-0">
-        {/* Mobile logo */}
         <div className="flex items-center justify-between p-6 lg:hidden border-b border-border">
           <Link href="/" className="flex items-center gap-2 font-bold text-lg">
             <Building2 className="w-5 h-5 text-primary" />
@@ -70,7 +65,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </Link>
         </div>
 
-        {/* Form area */}
         <div className="flex-1 flex items-center justify-center p-6 sm:p-10">
           <div className="w-full max-w-sm">
             {children}

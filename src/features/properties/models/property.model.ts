@@ -11,6 +11,7 @@ export interface IProperty {
   description?: string;
   sellerId: Types.ObjectId;
   views: number;
+  messagesCount: number;
 
   category: "House" | "Apartment" | "Land" | "Colony";
   area?: string;
@@ -56,6 +57,7 @@ const PropertySchema = new Schema<IProperty>(
     description:        { type: String, trim: true, maxlength: 2000 },
     sellerId:           { type: Schema.Types.ObjectId, ref: "user", required: true },
     views:              { type: Number, default: 0 },
+    messagesCount:      { type: Number, default: 0 },
 
     category:    { type: String, enum: ["House", "Apartment", "Land", "Colony"], required: true },
     area:        { type: String, trim: true },
@@ -93,5 +95,6 @@ PropertySchema.index({ sellerId: 1, status: 1 });
 PropertySchema.index({ sellerId: 1, createdAt: -1 });
 PropertySchema.index({ category: 1, status: 1 });
 PropertySchema.index({ verificationStatus: 1, status: 1 });
+PropertySchema.index({ latitude: 1, longitude: 1 }, { sparse: true });
 
 export const Property = models.Property || model<IProperty>("Property", PropertySchema);

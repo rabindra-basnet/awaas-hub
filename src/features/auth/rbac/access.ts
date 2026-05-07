@@ -2,46 +2,39 @@ import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc } from "better-auth/plugins/admin/access";
 
 const statement = {
-  property:    ["create", "read", "update", "delete", "share"] as const,
-  appointment: ["create", "read", "update", "delete"] as const,
-  file:        ["create", "read", "update", "delete"] as const,
-  favorite:    ["create", "read", "delete"] as const,
+  property:    ["create", "read", "view", "update", "delete", "share", "print", "copy", "duplicate"] as const,
+  appointment: ["create", "read", "view", "update", "delete"] as const,
+  file:        ["create", "read", "view", "update", "delete", "copy", "duplicate"] as const,
+  favorite:    ["create", "read", "view", "delete"] as const,
   user:        ["create", "read", "update", "delete", "ban"] as const,
-  analytics:   ["read"] as const,
-  ads:         ["create", "read", "update", "delete"] as const,
-  support:     ["create", "read", "update", "delete"] as const,
+  analytics:   ["read", "view"] as const,
+  ads:         ["create", "read", "view", "update", "delete", "duplicate"] as const,
+  support:     ["create", "read", "view", "update", "delete"] as const,
 };
 
 export const ac = createAccessControl(statement);
 
 export const userRole = ac.newRole({
-  property:    ["create", "read", "update", "delete", "share"],
-  appointment: ["create", "read", "update", "delete"],
-  file:        ["create", "read", "update", "delete"],
-  favorite:    ["create", "read", "delete"],
-  support:     ["create", "read"],
+  property:    ["create", "read", "view", "update", "delete", "share"],
+  appointment: ["create", "read", "view", "update", "delete"],
+  file:        ["create", "read", "view", "update", "delete"],
+  favorite:    ["create", "read", "view", "delete"],
+  support:     ["create", "read", "view"],
 });
 
 export const adminRole = ac.newRole({
   ...adminAc.statements,
-  property:    ["create", "read", "update", "delete", "share"],
-  appointment: ["create", "read", "update", "delete"],
-  file:        ["create", "read", "update", "delete"],
-  favorite:    ["create", "read", "delete"],
+  property:    ["create", "read", "view", "update", "delete", "share", "print", "copy", "duplicate"],
+  appointment: ["create", "read", "view", "update", "delete"],
+  file:        ["create", "read", "view", "update", "delete", "copy", "duplicate"],
+  favorite:    ["create", "read", "view", "delete"],
   user:        ["create", "read", "update", "delete", "ban"],
-  analytics:   ["read"],
-  ads:         ["create", "read", "update", "delete"],
-  support:     ["create", "read", "update", "delete"],
+  analytics:   ["read", "view"],
+  ads:         ["create", "read", "view", "update", "delete", "duplicate"],
+  support:     ["create", "read", "view", "update", "delete"],
 });
 
 export enum Role {
   USER  = "user",
   ADMIN = "admin",
-}
-
-export function checkAcPermission(
-  role: Role,
-  permissions: Parameters<typeof ac.hasPermission>[1],
-) {
-  return ac.hasPermission({ role, permissions });
 }

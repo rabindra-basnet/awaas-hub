@@ -1,7 +1,7 @@
 import { HydrationBoundary, dehydrate } from "@tanstack/react-query";
 import { redirect } from "next/navigation";
 import { getQueryClient } from "@/shared/lib/query-client";
-import { getServerSession } from "@/features/auth/server/session";
+import { getServerSession, isRealSession } from "@/features/auth/server/session";
 import { fetchDashboardStats } from "@/features/dashboard/server/dashboard.fetcher";
 import { dashboardKeys } from "@/features/dashboard/lib/dashboard-keys";
 import { Role } from "@/features/auth/rbac/access";
@@ -9,7 +9,7 @@ import DashboardContent from "@/features/dashboard/components/dashboard-content"
 
 export default async function DashboardPage() {
   const session = await getServerSession();
-  if (!session) redirect("/login");
+  if (!isRealSession(session)) redirect("/login");
 
   const qc = getQueryClient();
 

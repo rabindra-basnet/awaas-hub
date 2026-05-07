@@ -35,12 +35,12 @@ export async function connectToDatabase(): Promise<{
     mongoose.set("bufferCommands", false);
 
     cache.promise = mongoose.connect(env.MONGODB_URI, {
-      dbName: "awaas-hub",
+      dbName: "awaas-hub-production",
       maxPoolSize: 10,
       minPoolSize: 2,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
-      autoIndex: process.env.NODE_ENV !== "production",
+      autoIndex: true,
     });
   }
 

@@ -1,106 +1,200 @@
 "use client";
 
-import { Heart, MapPin, BedDouble, Bath, Maximize2, Building2 } from "lucide-react";
+import { useTransition } from "react";
+import { Heart, MapPin, BedDouble, Bath, Maximize2, Building2, MoreVertical, Pencil, Trash2, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
-import { useToggleFavorite } from "@/features/properties/queries/properties.queries";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
+import { useToggleFavorite, useDeleteProperty } from "@/features/properties/queries/properties.queries";
 import { toast } from "sonner";
 import type { PropertyWithMeta } from "@/features/properties/server/properties.fetcher";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  available: "default",
-  booked:    "secondary",
-  sold:      "destructive",
+const statusConfig: Record<string, { label: string; className: string; icon: React.ElementType }> = {
+  available: { label: "Available", className: "property-badge-available", icon: CheckCircle2 },
+  booked:    { label: "Booked",    className: "property-badge-booked",    icon: Clock },
+  sold:      { label: "Sold",      className: "property-badge-sold",      icon: XCircle },
 };
 
-export default function PropertyCard({ property: p }: { property: PropertyWithMeta }) {
+const verifyConfig: Record<string, { label: string; className: string }> = {
+  pending:  { label: "Pending",  className: "property-badge-pending" },
+  verified: { label: "Verified", className: "property-badge-verified" },
+  rejected: { label: "Rejected", className: "property-badge-rejected" },
+};
+
+interface PropertyCardProps {
+  property: PropertyWithMeta;
+  canFavorite: boolean;
+  canManage: boolean;
+}
+
+export default function PropertyCard({ property: p, canFavorite, canManage }: PropertyCardProps) {
+  const router = useRouter();
   const toggle = useToggleFavorite();
+  const deleteProperty = useDeleteProperty();
+  const [isDeleting, startDelete] = useTransition();
+
+  const status  = statusConfig[p.status]  ?? statusConfig.available;
+  const verify  = verifyConfig[p.verificationStatus] ?? verifyConfig.pending;
 
   function handleFavorite(e: React.MouseEvent) {
     e.preventDefault();
+    e.stopPropagation();
+    if (!canFavorite) {
+      toast.info("Sign in to save properties");
+      return;
+    }
     toggle.mutate(
       { propertyId: p._id, isFav: p.isFavorite },
       {
-        onSuccess: () =>
-          toast.success(p.isFavorite ? "Removed from favorites" : "Added to favorites"),
-        onError: (err) => toast.error(err.message),
+        onSuccess: () => toast.success(p.isFavorite ? "Removed from favorites" : "Saved"),
+        onError:   (err) => toast.error(err.message),
       },
     );
   }
 
+  function handleDelete(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm("Delete this property? This cannot be undone.")) return;
+    startDelete(async () => {
+      deleteProperty.mutate(p._id, {
+        onSuccess: () => toast.success("Property deleted"),
+        onError:   (err) => toast.error(err.message),
+      });
+    });
+  }
+
   return (
-    <Link
-      href={`/properties/${p._id}`}
-      className="group rounded-xl border border-border bg-card overflow-hidden hover:shadow-md transition-shadow block"
-    >
-      {/* Image */}
-      <div className="relative h-48 bg-muted overflow-hidden">
+    <Link href={`/properties/${p._id}`} className="property-card group">
+      {/* ── Image ── */}
+      <div className="relative aspect-[4/3] bg-muted overflow-hidden">
         {p.imageUrl ? (
           <img
             src={p.imageUrl}
             alt={p.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Building2 className="w-10 h-10 text-muted-foreground/20" />
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/60">
+            <Building2 className="w-12 h-12 text-muted-foreground/20" />
           </div>
         )}
 
-        <div className="absolute top-3 left-3">
-          <Badge variant={statusVariant[p.status] ?? "outline"} className="capitalize text-[10px]">
-            {p.status}
-          </Badge>
-        </div>
+        {/* gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
-        <Button
-          size="icon"
-          variant="ghost"
+        {/* status badge — bottom left */}
+        <span className={`absolute bottom-2.5 left-2.5 property-badge ${status.className}`}>
+          {p.status}
+        </span>
+
+        {/* verification badge — top left */}
+        {p.verificationStatus !== "verified" && (
+          <span className={`absolute top-2.5 left-2.5 property-badge ${verify.className}`}>
+            {p.verificationStatus}
+          </span>
+        )}
+
+        {/* Favorite button — top right */}
+        <button
+          type="button"
           onClick={handleFavorite}
           disabled={toggle.isPending}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/80 dark:bg-black/50 backdrop-blur-sm hover:bg-white dark:hover:bg-black/70"
+          className="absolute top-2 right-2 property-icon-btn"
+          aria-label={p.isFavorite ? "Remove from favorites" : "Add to favorites"}
         >
           <Heart
             className={`w-4 h-4 transition-colors ${
-              p.isFavorite ? "fill-rose-500 text-rose-500" : "text-muted-foreground"
+              canFavorite && p.isFavorite ? "fill-rose-500 text-rose-500" : "text-foreground"
             }`}
           />
-        </Button>
+        </button>
+
+        {/* Owner actions — bottom right (only when canManage) */}
+        {canManage && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                className="absolute bottom-2 right-2 property-icon-btn"
+                aria-label="Property actions"
+              />}
+            >
+              <MoreVertical className="w-4 h-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  router.push(`/properties/${p._id}/edit`);
+                }}
+              >
+                <Pencil className="w-3.5 h-3.5 mr-2" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={isDeleting}
+                onClick={handleDelete}
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-2" />
+                {isDeleting ? "Deleting…" : "Delete"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
-      {/* Content */}
-      <div className="p-4 space-y-2">
-        <p className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
+      {/* ── Body ── */}
+      <div className="p-4 space-y-2.5">
+        {/* Title */}
+        <p className="font-semibold text-sm leading-snug truncate group-hover:text-primary transition-colors">
           {p.title}
         </p>
 
+        {/* Location */}
         <p className="flex items-center gap-1 text-xs text-muted-foreground">
           <MapPin className="w-3 h-3 shrink-0" />
           <span className="truncate">{p.location}</span>
         </p>
 
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          {p.bedrooms != null && (
-            <span className="flex items-center gap-1">
-              <BedDouble className="w-3 h-3" /> {p.bedrooms}
+        {/* Stats chips */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {p.bedrooms != null && p.bedrooms > 0 && (
+            <span className="property-stat-chip">
+              <BedDouble className="w-3 h-3" /> {p.bedrooms} bed
             </span>
           )}
-          {p.bathrooms != null && (
-            <span className="flex items-center gap-1">
-              <Bath className="w-3 h-3" /> {p.bathrooms}
+          {p.bathrooms != null && p.bathrooms > 0 && (
+            <span className="property-stat-chip">
+              <Bath className="w-3 h-3" /> {p.bathrooms} bath
             </span>
           )}
           {p.area && (
-            <span className="flex items-center gap-1">
+            <span className="property-stat-chip">
               <Maximize2 className="w-3 h-3" /> {p.area}
             </span>
           )}
         </div>
 
-        <div className="flex items-center justify-between pt-1">
-          <p className="font-bold">NPR {p.price.toLocaleString()}</p>
-          <Badge variant="outline" className="text-[10px]">{p.category}</Badge>
+        {/* Price + category */}
+        <div className="flex items-center justify-between pt-0.5">
+          <p className="font-bold text-base">
+            NPR <span className="tabular-nums">{p.price.toLocaleString()}</span>
+          </p>
+          <Badge variant="secondary" className="text-[10px] capitalize">
+            {p.category}
+          </Badge>
         </div>
       </div>
     </Link>

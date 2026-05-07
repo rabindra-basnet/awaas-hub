@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useSession } from "@/features/auth/client/auth-client";
@@ -38,17 +38,11 @@ export default function HomeHeader() {
         <div className="hidden md:flex items-center gap-2">
           <LanguageSwitcher />
           {session?.user ? (
-            <Button asChild size="sm">
-              <Link href="/dashboard">{t.nav.dashboard}</Link>
-            </Button>
+            <Button size="sm" render={<Link href="/dashboard" />} nativeButton={false}>{t.nav.dashboard}</Button>
           ) : (
             <>
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/login">{t.nav.signIn}</Link>
-              </Button>
-              <Button asChild size="sm">
-                <Link href="/signup">{t.nav.getStarted}</Link>
-              </Button>
+              <Button variant="ghost" size="sm" render={<Link href="/login" />} nativeButton={false}>{t.nav.signIn}</Button>
+              <Button size="sm" render={<Link href="/signup" />} nativeButton={false}>{t.nav.getStarted}</Button>
             </>
           )}
         </div>
@@ -69,12 +63,8 @@ export default function HomeHeader() {
             <LanguageSwitcher />
           </div>
           <div className="flex gap-2">
-            <Button asChild variant="outline" size="sm" className="flex-1">
-              <Link href="/login">{t.nav.signIn}</Link>
-            </Button>
-            <Button asChild size="sm" className="flex-1">
-              <Link href="/signup">{t.nav.getStarted}</Link>
-            </Button>
+            <Button variant="outline" size="sm" className="flex-1" render={<Link href="/login" />} nativeButton={false}>{t.nav.signIn}</Button>
+            <Button size="sm" className="flex-1" render={<Link href="/signup" />} nativeButton={false}>{t.nav.getStarted}</Button>
           </div>
         </div>
       )}

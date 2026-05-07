@@ -82,8 +82,21 @@ export const useCreateProperty = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: object) =>
-      throwIfError(fetch("/api/properties", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })),
+      throwIfError(fetch("/api/properties/new", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })),
     onSuccess: () => qc.invalidateQueries({ queryKey: propertyKeys.all }),
+  });
+};
+
+/* ── Update ── */
+export const useUpdateProperty = (id: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: object) =>
+      throwIfError(fetch(`/api/properties/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: propertyKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: propertyKeys.all });
+    },
   });
 };
 

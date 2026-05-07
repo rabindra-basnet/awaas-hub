@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { nextCookies } from "better-auth/next-js";
-import { admin, anonymous } from "better-auth/plugins";
+import { admin, anonymous, lastLoginMethod } from "better-auth/plugins";
 
 import { env } from "@/env";
 import { getDb } from "@/shared/lib/db";
@@ -45,13 +45,14 @@ async function initAuth() {
         role: {
           type: "string",
           default: "user",
-          input: false,
+          input: true,
         },
       },
     },
 
     plugins: [
       nextCookies(),
+      lastLoginMethod(),
 
       anonymous({
         generateName: () => "Guest",
@@ -95,4 +96,4 @@ export type Session =
   Auth["$Infer"]["Session"];
 
 export type User =
-  Session["user"];
+  Session["user"]

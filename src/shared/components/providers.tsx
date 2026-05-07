@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "sonner";
 import { getQueryClient } from "@/shared/lib/query-client";
 import { LanguageProvider } from "./language-provider";
+import AnonymousSessionProvider from "@/features/auth/components/anonymous-session-provider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
@@ -12,6 +13,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
+        <AnonymousSessionProvider />
         {children}
         <Toaster richColors position="top-right" closeButton />
       </LanguageProvider>
