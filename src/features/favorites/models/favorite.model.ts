@@ -1,0 +1,19 @@
+import { Schema, model, models, type Types } from "mongoose";
+
+export interface IFavorite {
+  userId: Types.ObjectId;
+  propertyId: Types.ObjectId;
+  createdAt: Date;
+}
+
+const FavoriteSchema = new Schema<IFavorite>(
+  {
+    userId:     { type: Schema.Types.ObjectId, ref: "user", required: true },
+    propertyId: { type: Schema.Types.ObjectId, ref: "Property", required: true },
+  },
+  { timestamps: true },
+);
+
+FavoriteSchema.index({ userId: 1, propertyId: 1 }, { unique: true });
+
+export const Favorite = models.Favorite || model<IFavorite>("Favorite", FavoriteSchema);
