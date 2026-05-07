@@ -117,14 +117,162 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* ── Design System Tokens ──────────────────────────────────────────────── */
+@theme inline {
+  /* Spacing scale — used as section-*, container-*, gap-* */
+  --spacing-section-xs:  2rem;     /* 32px  — tight mobile sections      */
+  --spacing-section-sm:  3rem;     /* 48px                                */
+  --spacing-section-md:  5rem;     /* 80px  — standard section padding    */
+  --spacing-section-lg:  8rem;     /* 128px — hero/cta sections           */
+
+  /* Container max-widths */
+  --container-xs:   36rem;   /* 576px  — narrow modals/forms        */
+  --container-sm:   48rem;   /* 768px  — reading width               */
+  --container-md:   64rem;   /* 1024px — dashboard content           */
+  --container-lg:   80rem;   /* 1280px — max-w-7xl equivalent        */
+
+  /* Typography scale */
+  --text-display:  clamp(2rem, 5vw, 3.75rem);   /* hero h1              */
+  --text-h1:       clamp(1.75rem, 4vw, 3rem);    /* page headings        */
+  --text-h2:       clamp(1.5rem, 3vw, 2.25rem);  /* section headings     */
+  --text-h3:       clamp(1.125rem, 2vw, 1.5rem); /* card headings        */
+  --text-body-lg:  1.125rem;  /* 18px — lead paragraphs              */
+  --text-body:     1rem;      /* 16px — default body                 */
+  --text-sm:       0.875rem;  /* 14px — labels, helper text          */
+  --text-xs:       0.75rem;   /* 12px — badges, captions             */
+  --text-2xs:      0.6875rem; /* 11px — timestamps, meta             */
+
+  /* Line heights */
+  --leading-display: 1.1;
+  --leading-heading: 1.25;
+  --leading-body:    1.6;
+  --leading-tight:   1.35;
+
+  /* Font weights */
+  --weight-normal:    400;
+  --weight-medium:    500;
+  --weight-semibold:  600;
+  --weight-bold:      700;
+  --weight-extrabold: 800;
+
+  /* Border radii */
+  --rounded-card:   0.875rem;  /* property cards, stat cards          */
+  --rounded-input:  0.5rem;    /* form inputs                         */
+  --rounded-badge:  999px;     /* status badges, pills                */
+  --rounded-modal:  1rem;      /* dialogs and modals                  */
+  --rounded-icon:   0.625rem;  /* icon containers                     */
+
+  /* Shadows */
+  --shadow-card:   0 1px 3px 0 rgb(0 0 0 / .06), 0 1px 2px -1px rgb(0 0 0 / .06);
+  --shadow-card-hover: 0 4px 12px 0 rgb(0 0 0 / .10), 0 2px 4px -1px rgb(0 0 0 / .06);
+  --shadow-modal:  0 20px 60px -10px rgb(0 0 0 / .15);
+  --shadow-sidebar: 2px 0 8px 0 rgb(0 0 0 / .04);
+}
+
+/* ── Layout utilities ──────────────────────────────────────────────────── */
+@layer utilities {
+  /* Full-bleed section wrapper */
+  .section {
+    @apply py-[--spacing-section-md] px-4 sm:px-6;
+  }
+  .section-sm {
+    @apply py-[--spacing-section-sm] px-4 sm:px-6;
+  }
+  .section-lg {
+    @apply py-[--spacing-section-lg] px-4 sm:px-6;
+  }
+
+  /* Centered constrained container */
+  .container-page {
+    @apply max-w-[--container-lg] mx-auto w-full px-4 sm:px-6;
+  }
+  .container-content {
+    @apply max-w-[--container-md] mx-auto w-full;
+  }
+  .container-narrow {
+    @apply max-w-[--container-sm] mx-auto w-full;
+  }
+
+  /* Card surface */
+  .card-surface {
+    @apply rounded-[--rounded-card] border border-border bg-card shadow-[--shadow-card]
+           hover:shadow-[--shadow-card-hover] transition-shadow duration-200;
+  }
+
+  /* Page heading hierarchy */
+  .text-display {
+    @apply text-[--text-display] font-[--weight-extrabold] leading-[--leading-display] tracking-tight;
+  }
+  .text-h1 {
+    @apply text-[--text-h1] font-[--weight-bold] leading-[--leading-heading] tracking-tight;
+  }
+  .text-h2 {
+    @apply text-[--text-h2] font-[--weight-bold] leading-[--leading-heading] tracking-tight;
+  }
+  .text-h3 {
+    @apply text-[--text-h3] font-[--weight-semibold] leading-[--leading-tight];
+  }
+  .text-lead {
+    @apply text-[--text-body-lg] leading-[--leading-body] text-muted-foreground;
+  }
+  .text-label {
+    @apply text-[--text-xs] font-[--weight-semibold] uppercase tracking-widest text-muted-foreground;
+  }
+
+  /* Status badge */
+  .badge-available { @apply bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300; }
+  .badge-booked    { @apply bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300; }
+  .badge-sold      { @apply bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300; }
+  .badge-pending   { @apply bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300; }
+  .badge-verified  { @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300; }
+  .badge-rejected  { @apply bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300; }
+
+  /* Stat card icon container */
+  .icon-box {
+    @apply w-10 h-10 rounded-[--rounded-icon] flex items-center justify-center shrink-0;
+  }
+
+  /* Sticky header */
+  .header-sticky {
+    @apply sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md;
+  }
+
+  /* Scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+}
+
+/* ── Base styles ───────────────────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground text-[--text-body] leading-[--leading-body];
   }
   html {
     @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
+  h1 { @apply text-h1; }
+  h2 { @apply text-h2; }
+  h3 { @apply text-h3; }
+
+  /* Consistent focus rings */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring rounded-sm;
+  }
+
+  /* Smooth scroll */
+  html { scroll-behavior: smooth; }
+
+  /* Image defaults */
+  img { @apply max-w-full; }
 }

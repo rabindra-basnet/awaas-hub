@@ -34,15 +34,7 @@ export const env = createEnv({
     ESEWA_SECRET_KEY: z.string().min(1),
 
     KHALTI_SECRET_KEY: z.string().optional(),
-
-    SUPABASE_URL: z.string().url(),
-    SUPABASE_ANON_KEY: z.string().min(1),
-
-    NODE_ENV: z.enum([
-      "development",
-      "production",
-      "test",
-    ]),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   },
 
   client: {

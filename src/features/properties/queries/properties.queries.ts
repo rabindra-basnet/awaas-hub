@@ -8,31 +8,28 @@ import {
   useQueryClient,
   infiniteQueryOptions,
 } from "@tanstack/react-query";
+import { propertyKeys, PAGE_LIMIT } from "@/features/properties/lib/property-keys";
 
-const PAGE_LIMIT = 12;
-
-/* ── Query Keys ── */
-export const propertyKeys = {
-  all:      ["properties"] as const,
-  infinite: (filters?: object) => ["properties", "infinite", filters] as const,
-  detail:   (id: string)      => ["property", id] as const,
-};
+export { propertyKeys };
 
 /* ── Helpers ── */
-async function throwIfError(res: Response) {
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || `Request failed: ${res.status}`);
+async function throwIfError(res: Response | Promise<Response>) {
+  const r = await res;
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({}));
+    throw new Error(body.message || `Request failed: ${r.status}`);
   }
-  return res.json();
+  return r.json();
 }
 
-/* ── Infinite List ── */
-export const infinitePropertiesOptions = (filters?: {
+export type PropertiesFilters = {
   category?: string;
   status?: string;
   search?: string;
-}) =>
+};
+
+/* ── Infinite List ── */
+export const infinitePropertiesOptions = (filters?: PropertiesFilters) =>
   infiniteQueryOptions({
     queryKey: propertyKeys.infinite(filters),
     queryFn: async ({ pageParam }) => {
@@ -41,34 +38,30 @@ export const infinitePropertiesOptions = (filters?: {
       if (filters?.category) params.set("category", filters.category);
       if (filters?.status)   params.set("status",   filters.status);
       if (filters?.search)   params.set("search",   filters.search);
-      return throwIfError(await fetch(`/api/properties?${params}`));
+      return throwIfError(fetch(`/api/properties?${params}`));
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage: any) => lastPage.nextCursor ?? undefined,
   });
 
-export const useInfiniteProperties = (filters?: Parameters<typeof infinitePropertiesOptions>[0]) =>
+export const useInfiniteProperties = (filters?: PropertiesFilters) =>
   useSuspenseInfiniteQuery(infinitePropertiesOptions(filters));
 
 /* ── Single ── */
 export const propertyDetailOptions = (id: string) =>
   queryOptions({
     queryKey: propertyKeys.detail(id),
-    queryFn: () => throwIfError(fetch(`/api/properties/${id}`)).then((r) => r),
+    queryFn: () => throwIfError(fetch(`/api/properties/${id}`)),
   });
 
 export const useProperty = (id: string) => useSuspenseQuery(propertyDetailOptions(id));
 
-/* ── Toggle Favorite — optimistic ── */
+/* ── Toggle Favorite ── */
 export const useToggleFavorite = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ propertyId, isFav }: { propertyId: string; isFav: boolean }) =>
-      throwIfError(
-        await fetch(`/api/properties/${propertyId}/favorite`, {
-          method: isFav ? "DELETE" : "POST",
-        }),
-      ),
+      throwIfError(fetch(`/api/properties/${propertyId}/favorite`, { method: isFav ? "DELETE" : "POST" })),
     onMutate: async ({ propertyId, isFav }) => {
       await qc.cancelQueries({ queryKey: propertyKeys.detail(propertyId) });
       const snap = qc.getQueryData(propertyKeys.detail(propertyId));
@@ -89,13 +82,7 @@ export const useCreateProperty = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: object) =>
-      throwIfError(
-        fetch("/api/properties", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        }),
-      ),
+      throwIfError(fetch("/api/properties", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })),
     onSuccess: () => qc.invalidateQueries({ queryKey: propertyKeys.all }),
   });
 };
@@ -104,8 +91,7 @@ export const useCreateProperty = () => {
 export const useDeleteProperty = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      throwIfError(fetch(`/api/properties/${id}`, { method: "DELETE" })),
+    mutationFn: (id: string) => throwIfError(fetch(`/api/properties/${id}`, { method: "DELETE" })),
     onSuccess: () => qc.invalidateQueries({ queryKey: propertyKeys.all }),
   });
 };

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getQueryClient } from "@/shared/lib/query-client";
 import { getServerSession } from "@/features/auth/server/session";
 import { fetchDashboardStats } from "@/features/dashboard/server/dashboard.fetcher";
-import { dashboardStatsOptions } from "@/features/dashboard/queries/dashboard.queries";
+import { dashboardKeys } from "@/features/dashboard/lib/dashboard-keys";
 import { Role } from "@/features/auth/rbac/access";
 import DashboardContent from "@/features/dashboard/components/dashboard-content";
 
@@ -12,10 +12,9 @@ export default async function DashboardPage() {
   if (!session) redirect("/login");
 
   const qc = getQueryClient();
-  const opts = dashboardStatsOptions(session.user.id);
 
   await qc.prefetchQuery({
-    queryKey: opts.queryKey,
+    queryKey: dashboardKeys.stats(session.user.id),
     queryFn:  () => fetchDashboardStats(session.user.id, session.user.role as Role),
   });
 

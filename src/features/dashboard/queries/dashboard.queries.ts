@@ -1,10 +1,9 @@
 "use client";
 
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { dashboardKeys } from "@/features/dashboard/lib/dashboard-keys";
 
-export const dashboardKeys = {
-  stats: (userId: string) => ["dashboard", "stats", userId] as const,
-};
+export { dashboardKeys };
 
 export const dashboardStatsOptions = (userId: string) =>
   queryOptions({
