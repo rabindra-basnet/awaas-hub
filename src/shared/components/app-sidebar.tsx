@@ -12,6 +12,8 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
+  SidebarRail,
+  useSidebar,
 } from "@/shared/components/ui/sidebar";
 import {
   LayoutDashboard,
@@ -22,10 +24,9 @@ import {
   BarChart2,
   Settings,
   LogOut,
+  ChevronRight,
 } from "lucide-react";
-import { cn } from "@/shared/lib/utils";
 import { signOut, useSession } from "@/features/auth/client/auth-client";
-import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Role } from "@/features/auth/rbac/access";
 
@@ -41,86 +42,107 @@ const adminItems = [
   { href: "/analytics", label: "Analytics", icon: BarChart2 },
 ];
 
-export default function AppSidebar() {
-  const pathname  = usePathname();
-  const { data: session } = useSession();
-  const isAdmin   = session?.user.role === Role.ADMIN;
+function NavItem({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) {
+  const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
+  const isActive = pathname === href || pathname.startsWith(href + "/");
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="px-4 py-3">
-        <span className="font-bold text-lg tracking-tight">AawasHub</span>
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        render={<Link href={href} onClick={() => setOpenMobile(false)} />}
+        isActive={isActive}
+        tooltip={label}
+        className="gap-3"
+      >
+        <Icon className="w-4 h-4 shrink-0" />
+        <span className="truncate">{label}</span>
+        {isActive && <ChevronRight className="ml-auto w-3 h-3 opacity-50" />}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+export default function AppSidebar() {
+  const { data: session } = useSession();
+  const { setOpenMobile } = useSidebar();
+  const isAdmin = session?.user.role === Role.ADMIN;
+
+  const initials = session?.user.name
+    ?.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <Sidebar collapsible="icon" className="border-r border-border">
+      {/* Logo */}
+      <SidebarHeader className="h-14 flex items-center px-3 border-b border-border">
+        <SidebarMenuButton
+          render={<Link href="/dashboard" onClick={() => setOpenMobile(false)} />}
+          tooltip="AawasHub"
+          className="h-9 gap-2 font-bold text-base"
+        >
+          <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center shrink-0">
+            <Building2 className="w-3.5 h-3.5 text-primary-foreground" />
+          </div>
+          <span className="truncate">AawasHub</span>
+        </SidebarMenuButton>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="py-2">
+        {/* Main nav */}
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] px-4">Main</SidebarGroupLabel>
           <SidebarMenu>
-            {navItems.map(({ href, label, icon: Icon }) => (
-              <SidebarMenuItem key={href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === href || pathname.startsWith(href + "/")}
-                  tooltip={label}
-                >
-                  <Link href={href}>
-                    <Icon className="w-4 h-4" />
-                    <span>{label}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            {navItems.map((item) => <NavItem key={item.href} {...item} />)}
           </SidebarMenu>
         </SidebarGroup>
 
+        {/* Admin nav */}
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-[10px] px-4">Admin</SidebarGroupLabel>
             <SidebarMenu>
-              {adminItems.map(({ href, label, icon: Icon }) => (
-                <SidebarMenuItem key={href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === href}
-                    tooltip={label}
-                  >
-                    <Link href={href}>
-                      <Icon className="w-4 h-4" />
-                      <span>{label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {adminItems.map((item) => <NavItem key={item.href} {...item} />)}
             </SidebarMenu>
           </SidebarGroup>
         )}
+
+        {/* Settings at bottom of content */}
+        <SidebarGroup className="mt-auto">
+          <SidebarMenu>
+            <NavItem href="/settings" label="Settings" icon={Settings} />
+          </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-3 space-y-2">
-        {session?.user && (
-          <div className="flex items-center gap-2 px-1">
-            <Avatar className="w-7 h-7">
-              <AvatarImage src={session.user.image ?? undefined} />
-              <AvatarFallback className="text-xs">
-                {session.user.name?.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium truncate">{session.user.name}</p>
-              <p className="text-[10px] text-muted-foreground capitalize">{session.user.role}</p>
-            </div>
-          </div>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start gap-2 text-muted-foreground"
-          onClick={() => signOut()}
-        >
-          <LogOut className="w-4 h-4" />
-          <span>Sign out</span>
-        </Button>
+      {/* User footer */}
+      <SidebarFooter className="border-t border-border p-3">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              render={<button type="button" onClick={() => signOut()} />}
+              tooltip="Sign out"
+              className="h-auto py-2 gap-3"
+            >
+              <Avatar className="w-7 h-7 shrink-0">
+                <AvatarImage src={session?.user.image ?? undefined} />
+                <AvatarFallback className="text-[10px] font-semibold">{initials}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0 text-left group-data-[collapsible=icon]:hidden">
+                <p className="text-xs font-semibold truncate">{session?.user.name}</p>
+                <p className="text-[10px] text-muted-foreground capitalize">{session?.user.role}</p>
+              </div>
+              <LogOut className="w-3.5 h-3.5 text-muted-foreground shrink-0 group-data-[collapsible=icon]:hidden" />
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
+
+      {/* Rail for icon mode hover expand */}
+      <SidebarRail />
     </Sidebar>
   );
 }
