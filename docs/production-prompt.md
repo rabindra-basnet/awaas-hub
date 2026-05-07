@@ -300,9 +300,10 @@ User → Admin support. One thread per (userId, propertyId). Unique index on tha
 }
 ```
 
-### Appointment + Activity
+### Appointment
 ```ts
-// Appointment
+// Appointment — NO top-level status field. Status lives in activityHistory.
+// Current status = activityHistory[activityHistory.length - 1]?.status ?? "scheduled"
 {
   title: String (required, max 200)
   type: enum["Property Viewing","Inspection","Legal Review"] (required)
@@ -310,21 +311,25 @@ User → Admin support. One thread per (userId, propertyId). Unique index on tha
   propertyId: ObjectId → Property | null
   participants: [ObjectId → users]     // property owner + requester
   createdBy: ObjectId → users
-  status: enum["scheduled","approved","completed","cancelled"] default:"scheduled"
-  notes: String (max 500)
   image: String | null
   createdAt: Date
-}
 
-// Activity — audit log of appointment status changes
-{
-  appointmentId: ObjectId → Appointment (required, indexed)
-  action: String (required)    // e.g. "Status changed to approved"
-  status: enum["scheduled","approved","completed","cancelled"]
-  note: String (optional)
-  createdAt: Date
+  // Embedded audit trail — never a separate collection
+  activityHistory: [{
+    status: enum["scheduled","approved","completed","cancelled"] (required)
+    note: String (max 500, default "")
+    changedAt: Date (default now)
+    // _id: false — no subdocument _id needed
+  }]
 }
 ```
+
+**Activity history rules:**
+- `POST /api/appointments/new` seeds the first entry: `{ status: body.status || "scheduled", note: body.notes || "Appointment created", changedAt: new Date() }`
+- `PATCH /api/appointments/[id]` uses MongoDB `$push` to append (never replaces) — this bypasses Mongoose strict mode
+- Never add `status` as a top-level field and in activityHistory — choose one; embedded array wins
+- To check current status in API routes, always derive: `history[history.length - 1]?.status`
+- To read appointment with activityHistory from GET, use `Model.collection.findOne()` not `Model.findById().lean()` — the Mongoose model cache may not know about the field
 
 ### Subscription (payment/credits)
 ```ts
@@ -757,10 +762,29 @@ POST   /api/conversations/[id]/typing   # broadcast typing indicator
 ### Appointments
 ```
 GET    /api/appointments                # list (admin = all; user = own)
-POST   /api/appointments/new            # create
-GET    /api/appointments/[id]           # detail
-PATCH  /api/appointments/[id]           # update status (+ Activity log entry)
-DELETE /api/appointments/[id]           # cancel
+POST   /api/appointments/new            # create — seeds initial activityHistory entry
+GET    /api/appointments/[id]           # detail — use collection.findOne() not findById().lean()
+PATCH  /api/appointments/[id]           # status change → $push activityHistory (MongoDB txn)
+DELETE /api/appointments/[id]           # cancel — checks last activityHistory entry for status
+```
+
+**PATCH implementation pattern:**
+```ts
+// 1. Fetch with collection.findOne() to bypass Mongoose schema cache
+const appointment = await Appointment.collection.findOne({ _id: new Types.ObjectId(id) })
+const currentStatus = appointment.activityHistory?.at(-1)?.status
+
+// 2. Guard checks on currentStatus
+if (currentStatus === "completed" || currentStatus === "cancelled") return forbidden(...)
+
+// 3. Write in a Mongoose transaction — $push only, no $set: { status }
+await mongoSession.withTransaction(async () => {
+  await Appointment.collection.findOneAndUpdate(
+    { _id: new Types.ObjectId(id) },
+    { $push: { activityHistory: { status, note: notes || "", changedAt: new Date() } } },
+    { returnDocument: "after", session: mongoSession }
+  )
+})
 ```
 
 ### Billing / Payment
@@ -851,6 +875,152 @@ POST     /api/auth/update-role          # self-service role update (user only)
 
 ---
 
+## Mutation & Toast Discipline
+
+### Toast — single source, call site only
+TanStack Query fires BOTH hook-level `onSuccess`/`onError` AND per-call `mutate()` callbacks. If you put `toast.success()` in both, the user sees two toasts.
+
+**Rule: toasts live exclusively at the call site (`mutate(payload, { onSuccess, onError })`).**
+Hook-level `onSuccess`/`onError` do cache invalidation only — never show UI feedback.
+
+```ts
+// ✅ CORRECT — hook does only cache work
+export const useUpdateAppointmentStatus = () =>
+  useMutation({
+    mutationFn: ...,
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: appointmentKeys.detail(id) })
+      qc.invalidateQueries({ queryKey: ["dashboard"] })
+      // NO toast here
+    },
+    // NO onError here
+  })
+
+// ✅ CORRECT — toast at the call site
+updateStatus.mutate(
+  { id, status, notes },
+  {
+    onSuccess: () => toast.success("Appointment approved!"),
+    onError: (err) => toast.error(err.message || "Failed"),
+  }
+)
+```
+
+If a mutation is used in multiple places, each call site provides its own toast. Do not add toast to the hook to "cover" call sites that forgot — fix the call site.
+
+### mutationFn error handling — always read the response body
+```ts
+// ❌ WRONG — user sees hardcoded message, backend reason lost
+if (!res.ok) throw new Error("Failed to create appointment")
+
+// ✅ CORRECT — backend's { message: "..." } surfaces in the toast
+if (!res.ok) {
+  const body = await res.json().catch(() => ({}))
+  throw new Error(body.message || "Failed to create appointment")
+}
+```
+
+---
+
+## Mongoose Model Cache & Schema Evolution
+
+In Next.js dev mode, Mongoose models are compiled once and cached via `models.ModelName || model(...)`.
+When you add a new field to a schema, the cached model **does not know about it** until the server restarts.
+
+### Consequences
+- `Model.create({ newField: ... })` → strict mode silently strips `newField` before write
+- `Model.findById(id).lean()` → Mongoose may strip `newField` from read results too
+
+### Patterns that bypass the cache
+
+**For reads** — use the raw collection:
+```ts
+// Bypasses Mongoose schema entirely, returns every MongoDB field as-is
+const doc = await Model.collection.findOne({ _id: new Types.ObjectId(id) })
+```
+
+**For writes** — use MongoDB operators:
+```ts
+// $push / $set bypass Mongoose strict mode — they go straight to MongoDB
+await Model.collection.findOneAndUpdate(
+  { _id: new Types.ObjectId(id) },
+  { $push: { activityHistory: { ... } } },
+  { returnDocument: "after" }
+)
+```
+
+**For creates with new fields** — pass the field in `create()` and restart the server so the schema is compiled fresh. `$push` after create is the safe fallback if you can't restart.
+
+**Always restart the dev server** after adding a field to a Mongoose schema. The `models.X || model(...)` guard exists to prevent hot-reload errors, not to enable live schema updates.
+
+---
+
+## MongoDB Transaction Pattern
+
+Use `mongoSession.withTransaction()` for any write that spans more than one document, or for any write that must be atomic (e.g. credit deduction + access record creation, appointment create + activityHistory seed).
+
+```ts
+await connectToDatabase() // must establish connection before startSession
+const mongoSession = await mongoose.startSession()
+
+try {
+  await mongoSession.withTransaction(async () => {
+    // all operations here share the session
+    await ModelA.collection.findOneAndUpdate(..., { session: mongoSession })
+    await ModelB.create([{ ... }], { session: mongoSession })
+  })
+} finally {
+  await mongoSession.endSession()
+}
+```
+
+**Requirements:** MongoDB replica set (Atlas works out of the box; local dev needs `--replSet rs0`).
+**Single-document atomic writes** (`$push` + `$set` in one `findOneAndUpdate`) do NOT need a transaction — MongoDB guarantees document-level atomicity.
+
+---
+
+## Form Page UX Pattern (viewport-constrained)
+
+For pages that are primarily a form (create appointment, create property), constrain to viewport height with no page scroll:
+
+```tsx
+// page.tsx — outer shell
+export default function Page() {
+  return (
+    <div className="h-full overflow-hidden p-6">
+      <div className="h-full rounded-2xl overflow-hidden border border-border shadow-sm">
+        <Suspense fallback={<Loading />}>
+          <TheForm />
+        </Suspense>
+      </div>
+    </div>
+  )
+}
+
+// form component — two-column layout
+// Left: image / preview panel (full height, rounded-2xl m-3)
+// Right: form fields (h-full overflow-y-auto, internal scroll only)
+<form className="h-full">
+  <div className="grid grid-cols-1 lg:grid-cols-2 h-full">
+    <div className="hidden lg:block relative h-full rounded-2xl m-3 overflow-hidden bg-muted">
+      {/* property image + gradient overlay + booking summary */}
+      {/* round back button: absolute top-4 left-4, w-9 h-9 rounded-full */}
+    </div>
+    <div className="h-full overflow-y-auto flex flex-col bg-background border-l border-border">
+      <div className="flex flex-col flex-1 justify-center px-10 lg:px-14 py-10 max-w-lg mx-auto w-full space-y-5">
+        {/* title with pb-2 border-b separator */}
+        {/* form fields */}
+        {/* submit button */}
+      </div>
+    </div>
+  </div>
+</form>
+```
+
+The `(main)` layout wraps children in `flex-1 min-h-0 overflow-auto`. Setting `h-full overflow-hidden` on the page div stops the outer scroll. Internal form panel uses `overflow-y-auto` so fields scroll within their panel only.
+
+---
+
 ## Non-Negotiable Rules
 
 1. **No `style={{...}}` for gradients/colors** — use `globals.css` CSS classes with `color-mix()`
@@ -867,6 +1037,13 @@ POST     /api/auth/update-role          # self-service role update (user only)
 12. **Vertical slice** — every feature owns its model, fetcher, queries, components, and API handlers
 13. **Feature public API** — each feature exports only what other features need via `features/{name}/index.ts`
 14. **No `pages/` directory** — App Router only
+15. **No top-level `status` field for audit-trail entities** — embed `activityHistory: [{ status, note, changedAt }]`; current status = last entry
+16. **Toasts only at call sites** — hook-level `onSuccess`/`onError` do cache invalidation only; never show UI feedback there
+17. **Always read `res.json()` before throwing** in mutationFn — `const body = await res.json().catch(() => ({})); throw new Error(body.message || fallback)`
+18. **Use `Model.collection.findOne()` for reads that must include new schema fields** — do not rely on `findById().lean()` when the model cache may be stale
+19. **Use `$push`/`$set` MongoDB operators for writes involving new fields** — bypasses Mongoose strict mode regardless of model cache state
+20. **`mongoSession.withTransaction()`** for any multi-document write; single-document `$push + $set` in one `findOneAndUpdate` is already atomic and needs no transaction
+21. **Restart the dev server after every Mongoose schema change** — `models.X || model(...)` guard preserves the old compiled schema across hot reloads
 
 ---
 
