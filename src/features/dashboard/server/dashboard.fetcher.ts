@@ -1,10 +1,10 @@
-import { connectToDatabase } from "@/shared/lib/db";
+import { getDb } from "@/shared/lib/db";
 import { Property } from "@/features/properties/models/property.model";
 import { Favorite } from "@/features/favorites/models/favorite.model";
 import { Role } from "@/features/auth/rbac/access";
 
 export async function fetchDashboardStats(userId: string, role: Role) {
-  await connectToDatabase();
+  await getDb();
 
   const isAdmin = role === Role.ADMIN;
 

@@ -4,7 +4,7 @@ import { nextCookies } from "better-auth/next-js";
 import { admin, anonymous } from "better-auth/plugins";
 
 import { env } from "@/env";
-import { connectToDatabase } from "@/shared/lib/db";
+import { getDb } from "@/shared/lib/db";
 import {
   ac,
   adminRole,
@@ -16,13 +16,11 @@ let authInstance:
   | null = null;
 
 async function initAuth() {
-  const { db } = await connectToDatabase();
+  const db = await getDb();
 
   return betterAuth({
     baseURL: env.BETTER_AUTH_URL,
-
     secret: env.BETTER_AUTH_SECRET,
-
     database: mongodbAdapter(db),
 
     socialProviders: {

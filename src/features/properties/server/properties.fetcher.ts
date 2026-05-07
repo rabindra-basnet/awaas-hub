@@ -1,4 +1,4 @@
-import { connectToDatabase } from "@/shared/lib/db";
+import { getDb } from "@/shared/lib/db";
 import { Property } from "@/features/properties/models/property.model";
 import { File } from "@/features/files/models/file.model";
 import { Favorite } from "@/features/favorites/models/favorite.model";
@@ -42,7 +42,7 @@ export async function fetchProperties({
   status?: string;
   search?: string;
 }): Promise<{ items: PropertyWithMeta[]; nextCursor: string | null }> {
-  await connectToDatabase();
+  await getDb();
 
   const baseQuery: Record<string, any> =
     role === Role.ADMIN
@@ -112,7 +112,7 @@ export async function fetchProperties({
 }
 
 export async function fetchPropertyById(id: string, userId?: string, role?: string) {
-  await connectToDatabase();
+  await getDb();
 
   const property = await Property.findById(id).lean();
   if (!property) return null;
